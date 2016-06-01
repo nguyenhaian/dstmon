@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <link href="http://blackrockdigital.github.io/startbootstrap-sb-admin-2/bower_components/font-awesome/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/1.1.3/metisMenu.min.css">
+    <link href="css/style.css" rel="stylesheet">
+    <link href="css/sb-admin-2.css" rel="stylesheet">
+    <link href="css/datepicker.css" rel="stylesheet">
+</head>
+
+<body ng-app="chartApp">
+    <!-- <div linear-chart chart-data="salesData"></div> -->
+    <div ng-controller="CMonController">
+        <div ng-include="'views/home.navbar.html'" onload="loaded()"></div>
+        <!-- SVG containers-->
+        <div id="page-wrapper">
+            <div id="svgcontainer"></div>
+            <div rg-range-picker="timeRangePicker" labels="myDatetimeLabels" class="ng-isolate-scope" on-time-change="whenTimeChange"> </div>
+        </div>
+    </div>
+    <!-- <div ng-controller="SalesController">
+        <div linear-chart chart-data="salesData"></div>
+    </div> -->
+    <script src="//d3js.org/d3.v3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/lodash/4.12.0/lodash.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.5.5/angular.min.js"></script>
+    <script src="bower_components/angular-touch/angular-touch.min.js"></script>
+    <script src="bower_components/angular-slider/build/angular-slider.js"></script>
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/1.1.3/metisMenu.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.13.0/moment.min.js"></script>
+    <script src="themes/sb-admin-2.js"></script>
+    <script src="libs/range-picker.js"></script>
+    <script src="libs/ui-bootstrap-tpls-1.3.3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.6/socket.io.min.js"></script>
+    <script src="chartApp.js"></script>
+    <script src="services/socketio.service.js"></script>
+    <script src="services/d3js.service.js"></script>
+    <!-- <script src="services/lodash.service.js"></script>-->
+</body>
+
+</html>

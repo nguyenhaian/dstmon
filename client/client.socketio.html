@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+
+<body>
+
+<div ng-app="myApp" ng-controller="myCtrl">
+
+<!--   <div ng-repeat="signal in signals track by $index">
+  {{signal}}<br>
+  </div> -->
+
+</div>
+
+<script>
+var app = angular.module('myApp', []);
+app.controller('myCtrl', myCtrl);
+
+myCtrl.$inject = ['$scope', '$http'];
+
+function myCtrl($scope, $http) {
+    $scope.signals = [];
+    var	socket = io('http://payment.daithuvien.net:3000');
+
+    socket.on("mobile_reginfo", function (data) {  
+    	console.log("<---- mobile_reginfo " + JSON.stringify(data));
+		$scope.signals.push(JSON.stringify(data));
+		
+		// console.log("<---- signals " + $scope.signals.length);
+	});
+
+	socket.on("mobile_changeScene", function (data) {  
+		console.log("<---- mobile_changeScene " + JSON.stringify(data));
+		$scope.signals.push(JSON.stringify(data));
+
+		// console.log("<---- signals " + $scope.signals.length);
+		// $rootScope.$apply(function () {
+		// 	// callback.apply(socket, args);
+		// });
+	});
+
+	socket.on("mobile_disconnect", function (data) {  
+		console.log("<---- mobile_disconnect " + JSON.stringify(data));
+		$scope.signals.push(JSON.stringify(data));
+
+		// console.log("<---- signals " + $scope.signals.length);
+		// $rootScope.$apply(function () {
+		// 	// callback.apply(socket, args);
+		// });
+	});
+
+	socket.emit("webclient", "", function () {
+		var args = arguments;
+		$rootScope.$apply(function () {
+			// call back
+		});
+	});
+};
+</script>
+
+
+</body>
+</html>
+

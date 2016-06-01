@@ -1,0 +1,58 @@
+body {
+    font: 13px sans-serif;
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
+}
+
+.x.axis path {
+    display: none;
+}
+
+.line {
+    fill: none;
+    stroke: steelblue;
+    stroke-width: 1.5px;
+}
+
+.bordered {
+    padding: 2px;
+    border-style: solid;
+    border-width: 1px;
+    border-color: #cccccc;
+}
+
+label {
+    font-weight: 500;
+}
+
+.nav>li>label {
+    position: relative;
+    display: block;
+    padding: 10px 15px;
+    margin: 0px;
+    color: #337ab7;
+    text-decoration: none;
+}
+
+.nav>li>label:hover {
+    text-decoration: none;
+    background-color: #eee;
+}
+
+.sidebar .nav-second-level li label {
+    padding-left: 30px;
+}
+
+.nav>li>label.title {
+    color: #5e5e5e;
+    text-align: center;
+}
+
+.nav>li>label.title:hover {
+    text-decoration: none;
+}

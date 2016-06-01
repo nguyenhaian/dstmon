@@ -1,0 +1,82 @@
+DST Game data visualization
+
+1. 2 mức view chính:
++ Distribution
++ LoggedInIP
+
+
+2. Bánh thị phần
+
+3. Đồ thị realtime.
+
+4. Đồ thị timeline.
+
+
+Thông tin chưa khai thác:
+
+1. Action: chuyển từ scene này sang scene kia
+2. Thời gian user trong 1 scene
+
+ssh root@203.162.121.174 3010: ApplicationDautruong987(*&
+annh:annguyen108
+
+**********************************************************************************************************************************
+
+https://nodejs.org/docs/latest/api/cluster.html
+https://en.wikipedia.org/wiki/Inter-process_communication
+https://github.com/JoeDog/siege: stress API test
+
+**********************************************************************************************************************************
+
+1. Cài mongooDB trên unix để chạy.
+2. Dữ liệu muốn trả về mượt realtime thì dùng buffer 5s.
+3. Lưu lại snapshot mỗi 30s đối với dữ liệu đã đc xử lý.
+
+4. Khi tải độ phân giải cao, buff từng phần.
+5. cluster với node, pm2 -> redis + sticky session
+6. giấu server address: proxy
+7. cài git
+8. Để ý log file size.  ls -lh /home/annh/.pm2/logs/server-out-0.log
+9. uglify-js - for minifying the client-side JavaScript files: https://www.npmjs.com/package/uglify-js
+10. log file rotation
+
+(*): Giải pháp live toàn bộ các màn hình: tải raw data về truớc, sau đó xử lý buffer dữ liệu raw client gửi lên.
+
+**********************************************************************************************************************************
+
+1. Xuất hiện ....................ERRROR DELETE CLIENT.....................
+Do đó ---> tồn tại trường hợp client connect lên server nhưng ko gửi reginfo.
+
+2. Client bị mất mạng (bật airplane mode) -> server báo client mất kết nối sau ~30s timeout.
+Khi client có mạng trở lại hiện chưa gửi lại connect lên server hoặc connect lên mà ko gửi reginfo.
+
+**********************************************************************************************************************************
+
+24MB: 12h23 -> ?MB: 12h28
+
+**********************************************************************************************************************************
+
+
+7/5/2016 12:30:57 ~~~~~
+7/5/2016 12:30:58 -----
+D:\NodeApps\node_modules\socket.io\node_modules\engine.io\node_modules\ws\lib\Receiver.js:247
+  if (!this.state.fragmentedOperation) this.unfragmentedBufferPool.reset(true);
+                 ^
+
+TypeError: Cannot read property 'fragmentedOperation' of null
+    at Receiver.endPacket (D:\NodeApps\node_modules\socket.io\node_modules\engine.io\node_modules\ws\lib\Receiver.js:247:18)
+    at Receiver.opcodes.1.finish (D:\NodeApps\node_modules\socket.io\node_modules\engine.io\node_modules\ws\lib\Receiver.js:483:12)
+    at Receiver.<anonymous> (D:\NodeApps\node_modules\socket.io\node_modules\engine.io\node_modules\ws\lib\Receiver.js:451:33)
+    at Receiver.add (D:\NodeApps\node_modules\socket.io\node_modules\engine.io\node_modules\ws\lib\Receiver.js:95:24)
+    at Socket.realHandler (D:\NodeApps\node_modules\socket.io\node_modules\engine.io\node_modules\ws\lib\WebSocket.js:800:20)
+    at emitOne (events.js:77:13)
+    at Socket.emit (events.js:169:7)
+    at readableAddChunk (_stream_readable.js:153:18)
+    at Socket.Readable.push (_stream_readable.js:111:10)
+    at TCP.onread (net.js:529:20)
+
+D:\NodeApps>
+
+
+
+com.natu.tienlen: empty operator

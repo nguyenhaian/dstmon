@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+
+<body>
+
+<div ng-app="myApp" ng-controller="myCtrl">
+
+<table class="table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Scene</th>
+        <th>Data</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr ng-repeat="user in users track by $index">
+        <td>{{$index}}</td>
+        <th>{{user.scene_name}}</th>
+        <td>{{user}}</td>
+      </tr>
+    </tbody>
+</table>
+
+</div>
+
+<script>
+var app = angular.module('myApp', []);
+app.controller('myCtrl', myCtrl);
+
+myCtrl.$inject = ['$scope', '$http'];
+
+function myCtrl($scope, $http) {
+    $scope.users = {};
+
+    $http.get('http://payment.daithuvien.net:3000/users').
+        success(function(data) {
+            $scope.users = data;
+        });
+};
+</script>
+
+
+</body>
+</html>
