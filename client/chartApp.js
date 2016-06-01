@@ -10,13 +10,17 @@ app.controller('CMonController', ['$scope', '$timeout', '$interval', '$location'
         $scope.whenTimeChange = function(data) {
             console.log('whenTimeChange');
             // console.log('start', data.from.format("DD-MM-YYYY HH:mm"));
+            // data.from & data.to typeof moment
             $scope.viewangle.selectedViewTimeRange.start = data.from;
             $scope.viewangle.selectedViewTimeRange.end = data.to;
 
-            if ($scope.timeRangePicker.onupdate)
+            if ($scope.timeRangePicker.onupdate) {
                 $scope.timeRangePicker.onupdate = false;
-            else
+                console.log('case 1');
+            } else {
                 $scope.viewangle.updateGraph();
+                console.log('case 2');
+            }
 
         };
 
@@ -122,7 +126,7 @@ app.controller('CMonController', ['$scope', '$timeout', '$interval', '$location'
             if ($scope.datasource.selectedEarlyTime == 0) {
                 socket.timelineData({ oncache: false, limit: 0, date: $scope.datasource.selectedDate });
             } else if ($scope.datasource.selectedEarlyTime == -1) { // range
-                socket.timelineData({ oncache: false, limit: 0, date: null, datefrom: $scope.datasource.selectedDateFrom, dateto: $scope.datasource.selectedDateTo});
+                socket.timelineData({ oncache: false, limit: 0, date: null, datefrom: $scope.datasource.selectedDateFrom, dateto: $scope.datasource.selectedDateTo });
             } else {
                 // đối với server thật, mình sẽ lấy ở cache do đc cập nhật liên tục.
                 // nhưng đang dùng server test servermon.js, nên sẽ ko dùng cache mà query từ db

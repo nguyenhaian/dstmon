@@ -36,7 +36,7 @@ var Dist = mongoose.model("Dist", { id: String, data: { os: String, bundle: Stri
 
 // init data when server startup
 /*************************************************************/
-var lastHours = moment().subtract(1, 'hours').format("DD-MM-YYYY HH:mm:ss");
+var lastHours = moment().subtract(1, 'hours').format("YYYY-MM-DD HH:mm:ss");
 
 SnapshotData.find({})
     .select('time formattedData')
@@ -68,16 +68,35 @@ function dbgetdata(option, onSuccess, onFailed) {
         onSuccess(timelineFormattedData.slice(0, limit));
         // socket.emit('tld.response', timelineFormattedData.slice(0, limit));
     } else {
-        if (option.limit == 0 && option.date != null) {
-            // find on DB
+        if (option.limit == 0) {
+            var start, end;
+            if (option.date != null) {
+                // find on DB
+                start = moment(option.date).startOf('day').add(5, 'hours'); //.format("YYYY-MM-DD HH:mm:ss");
+                end = moment(option.date).startOf('day').add(29, 'hours'); //.format("YYYY-MM-DD HH:mm:ss");
+
+                start = objectIdWithTimestamp(start._d);
+                end = objectIdWithTimestamp(end._d);
+            } else if (option.date == null && option.datefrom != null && option.dateto != null) {
+                start = moment(option.datefrom).startOf('day').add(5, 'hours');
+                end = moment(option.dateto).startOf('day').add(5, 'hours');
+
+                if (moment.duration(end.diff(start)).asDays() > 10) {
+                    onFailed('date range exceed the limit 10 days');
+                    return;
+                }
+                start = objectIdWithTimestamp(start._d);
+                end = objectIdWithTimestamp(end._d);
+            } else {
+                onFailed('invalid option');
+                return;
+            }
+
             console.log(getTimeStamp() + ' start find on DB');
-            // var lastHours = moment().subtract(1, 'hours').format("DD-MM-YYYY HH:mm:ss");
-            var start = moment(option.date).startOf('day').add(5, 'hours').format("DD-MM-YYYY HH:mm:ss");
-            var end = moment(option.date).startOf('day').add(29, 'hours').format("DD-MM-YYYY HH:mm:ss");
-            SnapshotData.find({ time: { $gt: start, $lt: end } })
-                .select('time formattedData')
+            SnapshotData.find({ _id: { $gt: start, $lt: end } })
+                .select('_id time formattedData')
                 // .where('time').gt(start)
-                .sort({ time: -1 })
+                .sort({ _id: -1 })
                 .exec(function(err, docs) {
                     if (err) {
                         // socket.emit('tld.response.error');
@@ -94,32 +113,10 @@ function dbgetdata(option, onSuccess, onFailed) {
             // find on DB
             console.log(getTimeStamp() + ' start find on DB');
             SnapshotData.find({})
-                .select('time formattedData')
+                .select('_id time formattedData')
                 // .where('time').gt(start)
-                .sort({ time: -1 })
+                .sort({ _id: -1 })
                 .limit(option.limit)
-                .exec(function(err, docs) {
-                    if (err) {
-                        // socket.emit('tld.response.error');
-                        onFailed(err);
-                        return console.log(err)
-                    };
-                    console.log(getTimeStamp() + ' tld.response: ' + docs.length);
-                    // socket.emit('tld.response', docs);
-                    onSuccess(docs);
-                });
-        }
-
-        if (option.limit == 0 && option.date == null && option.datefrom != null && option.dateto != null) {
-            // find on DB
-            console.log(getTimeStamp() + ' start find on DB');
-            // var lastHours = moment().subtract(1, 'hours').format("DD-MM-YYYY HH:mm:ss");
-            var start = moment(option.datefrom).startOf('day').add(5, 'hours').format("DD-MM-YYYY HH:mm:ss");
-            var end = moment(option.dateto).startOf('day').add(5, 'hours').format("DD-MM-YYYY HH:mm:ss");
-            SnapshotData.find({ time: { $gt: start, $lt: end } })
-                .select('time formattedData')
-                // .where('time').gt(start)
-                .sort({ time: -1 })
                 .exec(function(err, docs) {
                     if (err) {
                         // socket.emit('tld.response.error');
@@ -151,7 +148,7 @@ app.use(function(req, res, next) {
 });
 
 function getTimeStamp() {
-    return (moment().format("DD-MM-YYYY HH:mm:ss"));
+    return (moment().format("YYYY-MM-DD HH:mm:ss"));
 }
 
 function addDistInfo(_info) {
@@ -523,9 +520,9 @@ setInterval(function() {
     if (_.isEmpty(formattedData))
         return;
     var copy = _.cloneDeep(formattedData);
-    timelineFormattedData.unshift({ time: getTimeStamp(), formattedData: copy });
+    timelineFormattedData.unshift({ time: new Date(), formattedData: copy });
 
-    var snapshotData = new SnapshotData({ time: getTimeStamp(), formattedData: copy });
+    var snapshotData = new SnapshotData({ time: new Date(), formattedData: copy });
     snapshotData.save(function(err, logDoc) {
         if (err) return console.error(err);
         console.log('+SnapshotData');

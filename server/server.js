@@ -30,7 +30,7 @@ var Dist = mongoose.model("Dist", { id: String, data: { os: String, bundle: Stri
 
 // init data when server startup
 /*************************************************************/
-var lastHours = moment().subtract(1, 'hours').format("DD-MM-YYYY HH:mm:ss");
+var lastHours = moment().subtract(1, 'hours').format("YYYY-MM-DD HH:mm:ss");
 
 SnapshotData.find({})
     .select('time formattedData')
@@ -71,7 +71,7 @@ app.use(function(req, res, next) {
 });
 
 function getTimeStamp() {
-    return (moment().format("DD-MM-YYYY HH:mm:ss"));
+    return (moment().format("YYYY-MM-DD HH:mm:ss"));
 }
 
 function addDistInfo(_info) {
@@ -411,9 +411,9 @@ setInterval(function() {
     if (_.isEmpty(formattedData))
         return;
     var copy = _.cloneDeep(formattedData);
-    timelineFormattedData.unshift({ time: getTimeStamp(), formattedData: copy });
+    timelineFormattedData.unshift({ time: new Date(), formattedData: copy });
 
-    var snapshotData = new SnapshotData({ time: getTimeStamp(), formattedData: copy });
+    var snapshotData = new SnapshotData({ time: new Date(), formattedData: copy });
     snapshotData.save(function(err, logDoc) {
         if (err) return console.error(err);
         console.log('+SnapshotData');

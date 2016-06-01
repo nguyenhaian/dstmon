@@ -14,7 +14,11 @@
             // svg variables
             var margin, width, height, x, y, color, xAxis, yAxis, line, svg;
 
-            var parseDate = d3.time.format("%d-%m-%Y %H:%M:%S").parse; //"09-05-2016 11:56:10"
+            // var parseDate = d3.time.format("%d-%m-%Y %H:%M:%S").parse; //"09-05-2016 11:56:10"
+
+            var mongoParseDate = function(_id) {
+                return moment(parseInt(_id.substring(0, 8), 16) * 1000);
+            }
 
             // prepareData: format data từ jsondata, do dó phải set jsondata trước
             var prepareData = function() {
@@ -41,23 +45,22 @@
                 var renderstep = Math.floor(renderPoints / maxRenderPoint) + 1;
 
                 console.log('render step: ' + renderstep + '|' + (renderstep * samplestep) + '(s)');
-                // console.log('jsondata[jsondata.length - 1].time:' + jsondata[jsondata.length - 1].time);
 
-                daterange.start = moment(jsondata[jsondata.length - 1].time, "DD-MM-YYYY HH:mm:ss");
-                daterange.end = moment(jsondata[0].time, "DD-MM-YYYY HH:mm:ss");
+                daterange.start = mongoParseDate(jsondata[jsondata.length - 1]._id);
+                daterange.end = mongoParseDate(jsondata[0]._id);
 
                 for (var i = jsondata.length - 1; i >= 0; i -= renderstep) {
                     var _item = jsondata[i];
 
                     // 0. Lọc theo viewangle.selectedViewTimeRange
                     if (viewangle.selectedViewTimeRange.start != null && viewangle.selectedViewTimeRange.end != null) {
-                        if (moment(_item.time, "DD-MM-YYYY HH:mm:ss").isBefore(viewangle.selectedViewTimeRange.start))
+                        if (mongoParseDate(_item._id).isBefore(viewangle.selectedViewTimeRange.start))
                             continue;
-                        if (moment(_item.time, "DD-MM-YYYY HH:mm:ss").isAfter(viewangle.selectedViewTimeRange.end))
+                        if (mongoParseDate(_item._id).isAfter(viewangle.selectedViewTimeRange.end))
                             continue;
                     }
 
-                    var item = { date: parseDate(_item.time) };
+                    var item = { date: mongoParseDate(_item._id) };
 
                     _.forOwn(_item.formattedData, function(_dist, _distid) { //(value, key)
                         if (_distid == 0) {
@@ -129,6 +132,8 @@
 
                 // console.log(viewangle.sceneList);
                 console.log('data[0]:' + JSON.stringify(data[0]));
+                // console.log('data[1]:' + JSON.stringify(data[1]));
+                // console.log('data[2]:' + JSON.stringify(data[2]));
 
                 return data;
             }
@@ -359,6 +364,7 @@
                     _.extend(distsInfo, _jsondata);
                 },
                 updateView: function(_viewangle, _datasource) {
+                    console.log('updateView');
                     if (!_.isEmpty(_viewangle)) { viewangle = _viewangle; } else { console.log('using default viewangle') }
                     if (!_.isEmpty(_datasource)) { datasource = _datasource; } else { console.log('using default datasource') }
                     // console.log('viewangle: ' + JSON.stringify(viewangle));

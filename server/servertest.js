@@ -13,7 +13,7 @@ var timelineFormattedData = [];
 var distsInfo = {}; // thông tin của các dist
 
 function getTimeStamp() {
-    return (moment().format("DD-MM-YYYY HH:mm:ss.SSS"));
+    return (moment().format("YYYY-MM-DD HH:mm:ss.SSS"));
 }
 
 /*************************************************************/
@@ -24,7 +24,7 @@ var Dist = mongoose.model("Dist", { id: String, data: { os: String, bundle: Stri
 
 // init data when server startup
 /*************************************************************/
-var lastHours = moment().subtract(1, 'hours').format("DD-MM-YYYY HH:mm:ss");
+var lastHours = moment().subtract(1, 'hours').format("YYYY-MM-DD HH:mm:ss");
 
 SnapshotData.find({})
     .select('time formattedData')

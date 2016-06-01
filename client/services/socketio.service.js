@@ -12,7 +12,7 @@
             var socket = io(url, { transports: ['websocket'] });
 
             var getTimeStamp = function() {
-                return moment().format("DD-MM-YYYY HH:mm:ss.SSS");
+                return moment().format("YYYY-MM-DD HH:mm:ss.SSS");
             }
 
             function timelineData(option) { // {oncache:false, limit, from, to}
