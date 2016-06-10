@@ -8,6 +8,7 @@ var _ = require('lodash')
 var request = require('request')
 var moment = require('moment')
 var mongoose = require('mongoose')
+var sql = require('mssql')
 
 var timelineFormattedData = [];
 var distsInfo = {}; // thông tin của các dist
@@ -16,6 +17,85 @@ function getTimeStamp() {
     return (moment().format("YYYY-MM-DD HH:mm:ss.SSS"));
 }
 
+var mssqlconfig = {
+    user: 'sa',
+    password: 'DstVietnam@123!',
+    server: '203.162.166.20', // You can use 'localhost\\instance' to connect to named instance
+    database: 'Notify'
+}
+
+var campaign = {
+    name: '',
+    targetType: 'manually',
+    selectedGroup: -1,
+    selectedApp: -1,
+    recipients: ['$scope.target.one']
+}
+
+var request = require('request');
+var options = {
+    method: 'POST',
+    url: 'https://onesignal.com/api/v1/notifications',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic NTE1YmY2ZGItNzc2NS00NTMzLTgzNzQtZDNhOWJjYTI0MzY3'
+    },
+    json: {
+        "app_id": "0f372644-5bde-43bf-b5e0-15c5f720d6e2",
+        "tags": [{ "key": "username", "relation": "=", "value": "aann2009" }],
+        "data": { "text": "Đến giờ chơi game rồi nhé!" },
+        "headings": { "en": "Knock knock" },
+        "contents": { "en": "Đến giờ chơi game rồi nhé!" },
+        "ios_badgeType": "Increase",
+        "ios_badgeCount": 1
+    }
+};
+
+function callback(error, response, body) {
+    if (!error && response.statusCode == 200) {
+        console.log('response: ' + JSON.stringify(response));
+        console.log('body: ' + JSON.stringify(body));
+    } else {
+        console.log(error);
+    }
+}
+
+request(options, callback);
+
+// sql.connect(mssqlconfig).then(function() {
+//     console.log('mssql connect ok');
+//     // sql.query`select * from mytable where id = ${value}`.then(function(recordset) {
+//     sql.query `insert into  MessageCampaign (name, recipients, type) output inserted.id 
+//             values(${campaign.name}, ${campaign.recipients.length},${campaign.targetType})`
+//     .then(function(recordset) {
+//         console.dir(recordset);
+//     }).catch(function(err) {
+//         // ... error checks 
+//     });
+// }).catch(function(err) {
+//     // ... error checks
+//     console.log({ err: err });
+// });
+
+// sql.connect(config).then(function() {
+//     new sql.Request().query('select * from PrepareMessage', function(err, recordset) {
+//         // ... error checks
+//         console.dir(recordset);
+//         // console.log({ data: recordset, err: err });
+//     });
+
+// }).catch(function(err) {
+//     // ... error checks
+//     // res.json(err);
+//     console.log(err);
+// });
+
+sql.on('error', function(err) {
+    // ... error handler
+    console.log(err)
+});
+
+return;
 /*************************************************************/
 mongoose.connect('mongodb://localhost/CustomerMonitor')
 
@@ -50,8 +130,8 @@ Dist.find({})
 function addDistInfo(_info) {
     var _distid = _info.disid;
     console.log(getTimeStamp() + ' ' + JSON.stringify(distsInfo[_distid]))
-    console.log('_.isEmpty(distsInfo[_distid].op): '+ _.isEmpty(distsInfo[_distid].op))
-    console.log('!_.isEmpty(_info.operator): '+ _info.operator)
+    console.log('_.isEmpty(distsInfo[_distid].op): ' + _.isEmpty(distsInfo[_distid].op))
+    console.log('!_.isEmpty(_info.operator): ' + _info.operator)
     console.log('_info.operator ' + Boolean(_info.operator))
     if (!_.has(distsInfo, _distid)) {
         // insert

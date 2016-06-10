@@ -5,6 +5,10 @@
         .module('chartApp')
         .factory('socket', ['d3s', '$rootScope', '$location', '$http', function(d3s, $rootScope, $location, $http) {
             var absUrl = $location.absUrl();
+            var indexofsharp  = absUrl.indexOf('#');
+            if(indexofsharp > 0){
+                absUrl = absUrl.substring(0, indexofsharp);
+            }
             var startLoadingTime = null;
             // var url = 'http://203.162.121.174:3003/tracker';
             var url = absUrl + 'tracker';

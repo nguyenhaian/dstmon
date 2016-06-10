@@ -26,6 +26,11 @@ body {
     border-color: #cccccc;
 }
 
+.navbar .tab-content {
+    margin-top: 51px;
+    border-top: solid 1px #C8C6D2;
+}
+
 label {
     font-weight: 500;
 }
@@ -55,4 +60,31 @@ label {
 
 .nav>li>label.title:hover {
     text-decoration: none;
+}
+
+
+/*notifier*/
+
+table,
+th,
+td {
+    border: 1px solid grey;
+    border-collapse: collapse;
+    padding: 5px;
+}
+
+table tr:nth-child(odd) {
+    background-color: #f1f1f1;
+}
+
+table tr:nth-child(even) {
+    background-color: #ffffff;
+}
+
+.input-group {
+    width: 100%;
+}
+
+.input-group-addon {
+    width: 80px;
 }

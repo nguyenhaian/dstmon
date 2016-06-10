@@ -26,7 +26,9 @@ myCtrl.$inject = ['$scope', '$http'];
 
 function myCtrl($scope, $http) {
     $scope.signals = [];
-    var	socket = io('http://payment.daithuvien.net:3000');
+    var	socket = io('http://203.162.121.174:3001/tracker');
+
+    socket.emit("tk.on", { realtime: true });
 
     socket.on("mobile_reginfo", function (data) {  
     	console.log("<---- mobile_reginfo " + JSON.stringify(data));

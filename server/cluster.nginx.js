@@ -3,12 +3,12 @@ var app = express();
 var server = require('http').createServer(app);
 var bodyParser = require('body-parser');
 var io = require('socket.io').listen(server);
-var redis = require('socket.io-redis');
 var compression = require('compression')
 var _ = require('lodash')
 var moment = require('moment')
 var mongoose = require('mongoose')
 var path = require('path');
+var io_redis = require('socket.io-redis');
 var Redis = require('ioredis');
 
 /*************************************************************/
@@ -16,7 +16,7 @@ var Redis = require('ioredis');
 var clients = io.of('/clients');
 var tracker = io.of('/tracker');
 
-io.adapter(redis({ host: 'localhost', port: 6379 }));
+io.adapter(io_redis({ host: 'localhost', port: 6379 }));
 var ioport = 4000 + parseInt(process.env.NODE_APP_INSTANCE || 0);
 
 // socketio vars - using redis to store
@@ -36,12 +36,19 @@ var Dist = mongoose.model("Dist", { id: String, data: { os: String, bundle: Stri
 
 // init data when server startup
 /*************************************************************/
-var lastHours = moment().subtract(1, 'hours').format("YYYY-MM-DD HH:mm:ss");
+// var lastHours = moment().subtract(1, 'hours').format("YYYY-MM-DD HH:mm:ss");
+function objectIdWithTimestamp(date) {
+    // assume date is a Date
+    // Convert date object to hex seconds since Unix epoch
+    var hexSeconds = Math.floor(date / 1000).toString(16);
+    // Create an ObjectId with that hex timestamp
+    return mongoose.Types.ObjectId(hexSeconds + "0000000000000000");
+}
 
 SnapshotData.find({})
-    .select('time formattedData')
+    .select('_id time formattedData')
     // .where('time').gt(lastHours)
-    .sort({ time: -1 })
+    .sort({ _id: -1 })
     .limit(2880)
     .exec(function(err, docs) {
         if (err) return console.log(err);

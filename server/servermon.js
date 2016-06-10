@@ -8,6 +8,107 @@ var _ = require('lodash')
 var moment = require('moment')
 var mongoose = require('mongoose')
 var path = require('path');
+var sql = require('mssql');
+var request = require('request');
+
+var onesignal = {
+    groups: [{
+        groupname: 'Group Game 3C',
+        members: [{ name: 'Game 3C Unity (& Android)', appid: '1f96cdec-1624-11e5-add5-3f9206d46331', key: 'MWY5NmNlNzgtMTYyNC0xMWU1LWFkZDYtNDNlZjEzZTIxZjU2' },
+            { name: 'Game 3C Sâm Lốc', appid: '2c838338-b34e-4c3a-b30f-95b9a2d84208', key: 'ZmNkNTViYTItZWExMC00Yzg2LTg4MGUtZmYxNTQxMTBmYTE5' },
+            { name: 'Game 3C Tiến Lên', appid: '5065f953-5eee-4489-90e6-6ae6230c5860', key: 'NmIxNDg2ZDQtMThmMC00YmU4LTk2MDEtMjcxNWQwNTM2NmE5' },
+            { name: 'Game 3C Xóc Đĩa', appid: '0c13acdd-61c7-433f-85cf-d1256f1c61b6', key: 'ZWU3YzFhY2UtZTkyYy00ZTAzLTkyNzItNzZmMWI1NDhmNzdk' }
+        ]
+    }, {
+        groupname: 'Group 52Fun',
+        members: [
+            { name: '52Fun Unity (& Android)', appid: 'a34faff6-4d5a-11e5-bfed-3f96110e57ae', key: 'YTM0ZmIwNmUtNGQ1YS0xMWU1LWJmZWUtYmZlYjY1NWY2Nzk4' },
+            { name: '52Fun Tiến Lên', appid: 'a1d96af6-6799-485f-b27a-3bf5ee4716bc', key: 'NzNhOWEzY2UtYzU0OS00MWQ1LWI0MmMtYjk1OTA1MzFkNDkz' },
+            { name: '52Fun Xóc Đĩa', appid: '0f372644-5bde-43bf-b5e0-15c5f720d6e2', key: 'NTE1YmY2ZGItNzc2NS00NTMzLTgzNzQtZDNhOWJjYTI0MzY3' }
+        ]
+    }, {
+        groupname: 'Group Đấu Trường',
+        members: [
+            { name: 'Đấu Trường Unity (& Android)', appid: '05052740-e9a0-11e4-9294-7f1cdb478da5', key: 'MDUwNTI3ZDYtZTlhMC0xMWU0LTkyOTUtNGI2ZDI0NDUzMDcy' },
+            { name: 'Đấu Trường Tiến Lên', appid: '7b7b28de-9db4-4752-800c-9034d4ea79d4', key: 'ZjY0YjhjMzEtNjAyMC00OGRkLWFmNTQtOWQ4OWNlMzdkOTA4' }
+        ]
+    }, {
+        groupname: 'Group Siam Play',
+        members: [
+            { name: 'Siam Unity', appid: '4f1d9f21-2646-42aa-807a-d13bacc41c56', key: 'ZjdjOTIwNjctZDFjMS00NTMwLTgxZTUtMmNhM2Q4MDIyYTRj' },
+            { name: 'Siam Hilo', appid: 'e44e3328-2666-44b5-8d95-383b4aacfe8b', key: 'ODE0Y2Q1YzItMzE5NS00MmU5LWE5YjMtZGYzMzA4NGEwNTYz' },
+            { name: 'Siam Dummy (& Android)', appid: '60c4f721-75c6-4f10-b736-3ff480038f61', key: 'Y2IyZDViNTEtMjY3NC00OWU5LTk4ZTQtZDRmZjg3YmE1MzIy' },
+            { name: 'Siam 9K', appid: '3c76eabc-4bdb-44bc-8673-b61e816b6396', key: 'ZTk1OGY5YjEtOTBjNS00OWRjLWE3ZDUtOTUwZGY5ZDNkNThl' }
+        ]
+    }, {
+        groupname: 'Group UWin',
+        members: [
+            { name: 'UWin', appid: '5274a4be-a643-4f6a-8241-9612eaab1f46', key: 'YzAxYjAwZmItNTVmMS00YmE4LThmOWYtMmU4NjdlYzk2ZGE4' }
+        ]
+    }],
+    onProcessing: false
+}
+
+var mssqlconfig = {
+    user: 'sa',
+    password: 'DstVietnam@123!',
+    server: '203.162.166.20', // You can use 'localhost\\instance' to connect to named instance
+    database: 'Notify'
+}
+
+sql.on('error', function(err) {
+    console.log({ err: err })
+});
+
+function createOneSignalMessage(campaignid, targetapp, recipient) {
+    var tags = [{ "key": "username", "relation": "=", "value": recipient.username }];
+    if (targetapp.userid) {
+        tags = [{ "key": "userid", "relation": "=", "value": recipient.userid }];
+    }
+    var send_after = recipient.send_after || new Date().toString();
+    var options = {
+        method: 'POST',
+        url: 'https://onesignal.com/api/v1/notifications',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic ' + targetapp.key
+        },
+        json: {
+            "app_id": targetapp.appid,
+            "tags": tags,
+            "data": { data: recipient.data || '' },
+            "headings": { "en": recipient.title },
+            "contents": { "en": recipient.message },
+            "send_after": send_after,
+            "ios_badgeType": "Increase",
+            "ios_badgeCount": 1
+        }
+    };
+    // console.log("options.json: " + JSON.stringify(options.json));
+
+    function callback(error, response, body) {
+        if (error) {
+            console.log('error: ' + JSON.stringify(error));
+        }
+        if (response.statusCode == 200) {
+            // console.log('body: ' + JSON.stringify(body));
+            //body: {"id":"4bcfd959-a712-473e-bd6a-7d05760a1531","recipients":1}
+            //body: {"id":"","recipients":0,"errors":["All included players are not subscribed"]}
+            var err = body.errors ? body.errors[0] : 'none';
+            err = err.substring(0, 250); // maxlength
+            sql.query `insert into  Message (userid, username, message, send_after, error, onesignalid, campaignid, recipients, target) 
+            values(${recipient.userid},${recipient.username},${recipient.message},${new Date(send_after)},${err},${body.id},${campaignid},${body.recipients},${targetapp.appid})`
+                .catch(function(err) {
+                    console.log("createOneSignalMessage insert error " + JSON.stringify(err));
+                });
+        } else {
+            console.log('body: ' + JSON.stringify(body));
+        }
+
+    }
+
+    request(options, callback);
+}
 
 /*************************************************************/
 // socketio namespaces
@@ -16,7 +117,6 @@ var tracker = io.of('/tracker');
 
 // socketio vars
 var connectedDevices = {};
-
 var formattedData = {}; // là phiên bản đã format của connectedDevices
 var timelineFormattedData = [];
 var distsInfo = {}; // thông tin của các dist
@@ -280,9 +380,163 @@ function removeDevice(cd) { // connectedDevice
 }
 
 app.get('/', function(req, res) {
-    // res.sendFile(__dirname + '/../client/home.html');
-    res.sendFile(path.resolve(__dirname + '/../client/home.html'));
+    // res.sendFile(__dirname + '/../client/index.html');
+    res.sendFile(path.resolve(__dirname + '/../client/index.html'));
 });
+
+// ************  api Notification *************
+app.post('/notify', function(req, res) {
+    var campaign = req.body;
+
+    if (!onesignal.groups[campaign.selectedGroup]) {
+        res.json({ err: 'invalid selectedApp' });
+        return;
+    }
+
+    if (onesignal.onProcessing) {
+        res.json({ err: 'onesignal is onProcessing' });
+        return;
+    } else {
+        onesignal.onProcessing = true;
+    }
+
+    function end(data) {
+        onesignal.onProcessing = false;
+        res.json(data);
+    }
+
+    function startCampaign(campaignid) {
+        if (campaign.targetType == 'manually') {
+            // 2. tạo các message trong bảng message
+            var mc = campaign.recipients.length;
+            if (!group.members[campaign.selectedApp])
+                mc = mc * group.members.length;
+            _.forEach(campaign.recipients, function(recipient) {
+                if (group.members[campaign.selectedApp]) {
+                    // send to a specific app
+                    var targetapp = group.members[campaign.selectedApp];
+                    createOneSignalMessage(campaignid, targetapp, recipient);
+                } else {
+                    // send to group
+                    _.forEach(group.members, function(targetapp) {
+                        createOneSignalMessage(campaignid, targetapp, recipient);
+                    });
+
+                }
+            });
+            end({ campaignid: campaignid, messagecount: mc });
+        } else if (campaign.targetType == 'ondb') {
+            end({ err: 'not supported yet.' });
+        } else {
+            end({ err: 'not supported yet.' });
+        }
+    }
+
+    var group = onesignal.groups[campaign.selectedGroup];
+
+    // 1. tạo campaign trong db và lấy id
+    sql.connect(mssqlconfig).then(function() {
+        sql.query `insert into  MessageCampaign (name, recipients, type, sentdate) output inserted.id 
+            values(${campaign.name}, ${campaign.recipients.length},${campaign.targetType},${new Date()})`
+            .then(function(recordset) {
+                var campaignid = recordset[0].id;
+                console.log('campaignid: ' + campaignid);
+                startCampaign(campaignid);
+            }).catch(function(err) {
+                end({ err: err });
+            });
+    }).catch(function(err) {
+        end({ err: err });
+    });
+});
+
+app.get('/loadLastSentMsg', function(req, res) {
+    sql.connect(mssqlconfig).then(function() {
+        new sql.Request().query('select top 30 * from Message order by id desc', function(err, recordset) {
+            // ... error checks
+            res.json({ data: recordset, err: err });
+        });
+
+    }).catch(function(err) {
+        res.json({ err: err });
+    });
+});
+
+app.get('/loadSentMsgByCampaign/:cmpid', function(req, res) {
+    sql.connect(mssqlconfig).then(function() {
+        sql.query `select * from Message where campaignid=${req.params.cmpid} order by id desc`
+            .then(function(recordset) {
+                res.json({ data: recordset });
+            }).catch(function(err) {
+                res.json({ err: err });
+            });
+    }).catch(function(err) {
+        res.json({ err: err });
+    });
+});
+
+app.get('/loadLastSentCampaigns', function(req, res) {
+    sql.connect(mssqlconfig).then(function() {
+        new sql.Request().query('select top 30 * from MessageCampaign order by id desc', function(err, recordset) {
+            // ... error checks
+            res.json({ data: recordset, err: err });
+        });
+
+    }).catch(function(err) {
+        res.json({ err: err });
+    });
+});
+
+app.post('/getPendingMessage', function(req, res) {
+    var postdata = req.body;
+    sql.connect(mssqlconfig).then(function() {
+        sql.query `select * from PendingMessage where target=${postdata.target}`
+            .then(function(recordset) {
+                res.json({ data: recordset });
+            }).catch(function(err) {
+                res.json({ err: err });
+            });
+
+    }).catch(function(err) {
+        res.json({ err: err });
+    });
+});
+
+app.get('/messagedetail/:appid/:msgid', function(req, res) {
+    var appid = req.params.appid;
+    var msgid = req.params.msgid;
+
+    for (var i = onesignal.groups.length - 1; i >= 0; i--) {
+        var group = onesignal.groups[i];
+        for (var j = group.members.length - 1; j >= 0; j--) {
+            var member = group.members[j];
+            if (member.appid == appid) {
+                var key = member.key;
+                var options = {
+                    method: 'GET',
+                    url: 'https://onesignal.com/api/v1/notifications/'+msgid+'?app_id='+appid,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Basic ' + key
+                    }
+                };
+                // console.log("options.json: " + JSON.stringify(options.json));
+
+                function callback(error, response, body) {
+                    // TODO
+                    res.json(JSON.parse(body));
+                }
+
+                request(options, callback);
+                return;
+            }
+        };
+    };
+
+    res.json({ err: 'appid not found' });
+});
+// ************** end api notification ***************
+
 
 app.get('/users', function(req, res) {
     res.json(connectedDevices);
