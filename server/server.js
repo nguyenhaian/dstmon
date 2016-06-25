@@ -11,13 +11,18 @@ var path = require('path');
 
 /*************************************************************/
 // socketio namespaces
-var clients = io.of('/clients');
+var client3C = io.of('/client3C');
+var client52 = io.of('/client52');
+var clientdt = io.of('/clientdt');
+var clientuwin = io.of('/clientuwin');
+var clientsiam = io.of('/clientsiam');
 var tracker = io.of('/tracker');
 
 // socketio vars
 var connectedDevices = {};
 
 var formattedData = {}; // là phiên bản đã format của connectedDevices
+var avgLoginData = {};
 var timelineFormattedData = [];
 var distsInfo = {}; // thông tin của các dist
 var realtimemode = false;
@@ -27,6 +32,7 @@ mongoose.connect('mongodb://localhost/CustomerMonitor');
 
 var SnapshotData = mongoose.model('SnapshotData', { time: String, formattedData: {} });
 var Dist = mongoose.model("Dist", { id: String, data: { os: String, bundle: String, op: Number } });
+var LoginData = mongoose.model('LoginData', { time: Date, formattedData: {} });
 
 // init data when server startup
 /*************************************************************/
@@ -74,27 +80,27 @@ function getTimeStamp() {
     return (moment().format("YYYY-MM-DD HH:mm:ss"));
 }
 
-function addDistInfo(_info) {
-    var _distid = _info.disid;
+function addDistInfo(_info, ope) {
+    var _distid = _info.disid; //
 
     if (!_.has(distsInfo, _distid)) {
         // insert
         distsInfo[_distid] = {
             os: _info.device_OS,
             bundle: _info.bundle,
-            op: _info.operator
+            op: _info.operator || ope
         };
         var dist = new Dist({ id: _distid, data: distsInfo[_distid] });
         dist.save(function(err, logDoc) {
             if (err) return console.error(err);
             console.log('+dist');
         });
-    } else if (!Boolean(distsInfo[_distid].op) && Boolean(_info.operator)) { //if(a) để check nếu a != null, a != 0, a != undefined
+    } else if (!Boolean(distsInfo[_distid].op)) { //if(a) để check nếu a != null, a != 0, a != undefined
         // update
         distsInfo[_distid] = {
             os: _info.device_OS,
             bundle: _info.bundle,
-            op: _info.operator
+            op: _info.operator || ope
         };
         Dist.update({ id: _distid }, { $set: { data: distsInfo[_distid] } }, {}, function(err, logDoc) {
             if (err) return console.error(err);
@@ -201,6 +207,68 @@ function removeDevice(cd) { // connectedDevice
     }
 }
 
+function captureUserAction(user, user_update) {
+    if (!user.username) {
+        var success;
+        //2016-06-11 22:59:22
+        var loginTime = moment(user.loginTime, "YYYY-MM-DD HH:mm:ss");
+        var duration = moment.duration(moment().diff(loginTime)).asSeconds();
+        if (user_update != null) {
+            // 1. user chưa login, từ màn hình login vào màn hình trong
+            success = true;
+        } else {
+            // 2. user chưa login, disconnect
+            success = false;
+        }
+
+        var disid = user.disid;
+        if (!_.has(avgLoginData, disid)) {
+            avgLoginData[disid] = {
+                success: success ? 1 : 0,
+                failed: success ? 0 : 1,
+                successTime: success ? duration : 0,
+                failedTime: success ? 0 : duration,
+                minST: success ? duration : undefined,
+                maxST: success ? duration : undefined,
+                minFT: success ? undefined : duration,
+                maxFT: success ? undefined : duration
+            }
+
+        } else {
+            if (success) {
+                avgLoginData[disid].successTime = (avgLoginData[disid].success * avgLoginData[disid].successTime + 1 * duration) / (avgLoginData[disid].success + 1);
+                avgLoginData[disid].success += 1;
+
+                if (avgLoginData[disid].minST > duration || avgLoginData[disid].minST == undefined)
+                    avgLoginData[disid].minST = duration;
+
+                if (avgLoginData[disid].maxST < duration || avgLoginData[disid].maxST == undefined)
+                    avgLoginData[disid].maxST = duration;
+            } else {
+                avgLoginData[disid].failedTime = (avgLoginData[disid].failed * avgLoginData[disid].failedTime + 1 * duration) / (avgLoginData[disid].failed + 1);
+                avgLoginData[disid].failed += 1;
+
+                if (avgLoginData[disid].minFT > duration || avgLoginData[disid].minFT == undefined)
+                    avgLoginData[disid].minFT = duration;
+
+                if (avgLoginData[disid].maxFT < duration || avgLoginData[disid].maxFT == undefined)
+                    avgLoginData[disid].maxFT = duration;
+            }
+        }
+
+        // var loginData = new LoginData({ time: new Date(), duration: duration, success: success });
+        // loginData.save(function(err, logDoc) {
+        //     if (err) return console.error(err);
+        // });
+    }
+
+    // 3. user đã login, đổi màn hình
+
+    // 3.1 user đổi từ màn hình login vào game
+
+    // 3.2  
+}
+
 app.get('/', function(req, res) {
     // res.sendFile(__dirname + '/../client/home.html');
     res.sendFile(path.resolve(__dirname + '/../client/home.html'));
@@ -255,6 +323,10 @@ app.get('/clients2', function(req, res) {
     res.json(_formattedData);
 });
 
+app.get('/logindata', function(req, res) {
+    res.json(avgLoginData);
+});
+
 app.get('/live', function(req, res) {
     res.sendFile(path.resolve(__dirname + '/../client/client.socketio.html'));
 });
@@ -281,26 +353,24 @@ app.get('/events', function(req, res) {
     })
 })
 
-clients.on('connection', function(socket) {
-    // console.log(getTimeStamp() + " a user has been connected");
-    // socket.emit('connected');
-    // socket.emit('hello');
-    // console.log(getTimeStamp() + ' ***** ');
+function handleConnection(socket, ope) {
     process.stdout.write('*')
-    connectedDevices[socket.id] = {};
+    connectedDevices[socket.id] = { operator: ope };
 
     socket.on('reginfo', function(user) {
         user = JSON.parse(user);
+        user.disid = user.disid + '_' + ope;
         // console.log(getTimeStamp() + ' +++++ '); // + JSON.stringify(user));
         process.stdout.write('+')
             // them thoi gian vao user
         user['loginTime'] = getTimeStamp();
-        connectedDevices[socket.id] = user;
+        _.extend(connectedDevices[socket.id], user);
+
         // connectedDevices[socket.id].loseFocus = false;
 
         addNewDevice(user);
 
-        addDistInfo(user);
+        addDistInfo(user, ope);
 
         // gui den manager_users
         if (realtimemode) tracker.emit('mobile_reginfo', user);
@@ -308,26 +378,37 @@ clients.on('connection', function(socket) {
 
     socket.on('changeScene', function(user) {
         user = JSON.parse(user);
+        user.disid = user.disid + '_' + ope;
         // console.log(getTimeStamp() + ' ~~~~~ '); // + JSON.stringify(user));
         process.stdout.write('~')
-            // them thoi gian vao user
-        user['sceneStartedTime'] = getTimeStamp();
-        // update user object
 
         // remove khoi mang formatted truoc khi them thong tin vao user
         removeDevice(connectedDevices[socket.id]);
 
+        // TODO: xử lý user action, trước khi extend,
+        captureUserAction(connectedDevices[socket.id], user);
+
+        // update user object
         // TODO: cần phải đảm bảo chắc chắn changeScene luôn xảy ra sau reginfo, nếu ko thì có trường hợp
-        user = _.extend(connectedDevices[socket.id], user);
-        // connectedDevices[socket.id].loseFocus = false;
+        var user = _.extend(connectedDevices[socket.id], user);
+
+        // them thoi gian vao user
+        user['sceneStartedTime'] = getTimeStamp();
 
         addNewDevice(user);
-
         // lưu ý device ko chứa thông tin về distid nên phải đưa thông tin đã extend
-        addDistInfo(user);
+        addDistInfo(user, ope);
 
         // gui den manager_users
         if (realtimemode) tracker.emit('mobile_changeScene', user);
+    });
+
+    socket.on('loginSuccess', function(data) {
+        // data = {duration: 4.1}
+    });
+
+    socket.on('loginFailed', function(data) {
+        // data = {duration: 2.2, errorcode: 1}
     });
 
     socket.on('loseFocus', function() {
@@ -348,11 +429,14 @@ clients.on('connection', function(socket) {
         var client = connectedDevices[socket.id];
 
         // gui den manager_users
-        if (typeof client === 'object' && !Array.isArray(client) && _.isEmpty(client) && client != undefined && client != null) {
+        if (_.has(client, 'operator') && !_.has(client, 'disid')) {
             // determine object is {}, you can't check by Object.is({},{}), it always returns false
             delete connectedDevices[socket.id];
         } else if (!_.isEmpty(client)) {
             removeDevice(client);
+
+            // TODO: xử lý user action, trước khi delete,
+            captureUserAction(connectedDevices[socket.id], null);
 
             // remove khoi mang
             delete connectedDevices[socket.id];
@@ -362,7 +446,22 @@ clients.on('connection', function(socket) {
             console.log("....................ERRROR DELETE CLIENT.....................");
         }
     });
+}
 
+client3C.on('connection', function(socket) {
+    handleConnection(socket, 5000)
+});
+client52.on('connection', function(socket) {
+    handleConnection(socket, 5200)
+});
+clientdt.on('connection', function(socket) {
+    handleConnection(socket, 500)
+});
+clientuwin.on('connection', function(socket) {
+    handleConnection(socket, 6000)
+});
+clientsiam.on('connection', function(socket) {
+    handleConnection(socket, 1000)
 });
 
 tracker.on('connection', function(socket) {
@@ -423,6 +522,21 @@ setInterval(function() {
     if (timelineFormattedData.length > maxlength)
         timelineFormattedData.pop();
 }, 30000);
+
+setInterval(function() {
+    if (_.isEmpty(avgLoginData))
+        return;
+
+    // Lưu snapshot vào db
+    var loginData = new LoginData({ time: moment().subtract(2.5, 'minutes')._d, formattedData: avgLoginData });
+    loginData.save(function(err, logDoc) {
+        if (err) return console.error(err);
+        console.log('+SnapshotAvgLoginData');
+    });
+
+    // xóa avgLoginData để tính lại cho lần tiếp theo
+    avgLoginData = {};
+}, 1000 * 60 * 5);
 
 // khởi động server.listen sau 3s để chắc chắn đã load data thành công từ DB
 setTimeout(function() {

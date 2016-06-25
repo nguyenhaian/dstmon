@@ -30,7 +30,8 @@ var onesignal = {
         groupname: 'Group Đấu Trường',
         members: [
             { name: 'Đấu Trường Unity (& Android)', appid: '05052740-e9a0-11e4-9294-7f1cdb478da5', key: 'MDUwNTI3ZDYtZTlhMC0xMWU0LTkyOTUtNGI2ZDI0NDUzMDcy' },
-            { name: 'Đấu Trường Tiến Lên', appid: '7b7b28de-9db4-4752-800c-9034d4ea79d4', key: 'ZjY0YjhjMzEtNjAyMC00OGRkLWFmNTQtOWQ4OWNlMzdkOTA4' }
+            { name: 'Đấu Trường Tiến Lên', appid: '7b7b28de-9db4-4752-800c-9034d4ea79d4', key: 'ZjY0YjhjMzEtNjAyMC00OGRkLWFmNTQtOWQ4OWNlMzdkOTA4' },
+            { name: 'Đấu Trường 2016', appid: 'b1b029c9-81c1-4c78-a80f-091547041204', key: 'NDBmMmRhYzMtNTFhYy00OGI4LTllY2YtYzllNGVkNWMxZjVl' }
         ]
     }, {
         groupname: 'Group Siam Play',
@@ -127,6 +128,7 @@ mongoose.connect('mongodb://localhost/CustomerMonitor');
 
 var SnapshotData = mongoose.model('SnapshotData', { time: String, formattedData: {} });
 var Dist = mongoose.model("Dist", { id: String, data: { os: String, bundle: String, op: Number } });
+var LoginData = mongoose.model('LoginData', { time: Date, formattedData: {} });
 
 // init data when server startup
 /*************************************************************/
@@ -160,7 +162,7 @@ Dist.find({})
         });
     });
 
-function dbgetdata(option, onSuccess, onFailed) {
+function dbgetTimeLineData(option, onSuccess, onFailed) {
     if (option.oncache) {
         var limit = 0;
         if (option.limit) limit = option.limit;
@@ -231,12 +233,77 @@ function dbgetdata(option, onSuccess, onFailed) {
         }
     }
 }
+
+function dbgetLoginData(option, onSuccess, onFailed) {
+    if (option.limit) {
+        var limit = 72;
+        if (option.limit) limit = option.limit;
+        if (limit > 72) limit = 72;
+        // else limit = timelineFormattedData.length;
+
+        // onSuccess(timelineFormattedData.slice(0, limit));
+        // socket.emit('tld.response', timelineFormattedData.slice(0, limit));
+        console.log(getTimeStamp() + ' start find on DB');
+        LoginData.find({})
+            .select('_id time formattedData')
+            // .where('time').gt(start)
+            .sort({ _id: -1 })
+            .limit(limit)
+            .exec(function(err, docs) {
+                if (err) {
+                    onFailed(err);
+                    return console.log(err)
+                };
+                console.log(getTimeStamp() + ' tld.response: ' + docs.length);
+                onSuccess(docs);
+            });
+    } else {
+        var start, end;
+        if (option.date != null) {
+            // find on DB
+            start = moment(option.date).startOf('day').add(5, 'hours'); //.format("YYYY-MM-DD HH:mm:ss");
+            end = moment(option.date).startOf('day').add(29, 'hours'); //.format("YYYY-MM-DD HH:mm:ss");
+
+            start = objectIdWithTimestamp(start._d);
+            end = objectIdWithTimestamp(end._d);
+        } else if (option.date == null && option.datefrom != null && option.dateto != null) {
+            start = moment(option.datefrom).startOf('day').add(5, 'hours');
+            end = moment(option.dateto).startOf('day').add(5, 'hours');
+
+            if (moment.duration(end.diff(start)).asDays() > 10) {
+                onFailed('date range exceed the limit 10 days');
+                return;
+            }
+            start = objectIdWithTimestamp(start._d);
+            end = objectIdWithTimestamp(end._d);
+        } else {
+            onFailed('invalid option');
+            return;
+        }
+
+        console.log(getTimeStamp() + ' start find on DB');
+        LoginData.find({ _id: { $gt: start, $lt: end } })
+            .select('_id time formattedData')
+            // .where('time').gt(start)
+            .sort({ _id: -1 })
+            .exec(function(err, docs) {
+                if (err) {
+                    onFailed(err);
+                    return console.log(err)
+                };
+                console.log(getTimeStamp() + ' tld.response: ' + docs.length);
+                onSuccess(docs);
+            });
+
+    }
+}
 /*************************************************************/
 // SETTING
 // phải gọi enable compression trước khi gọi các setting khác
 app.use(compression());
 // goi file trong cung thu muc
 app.use(express.static(__dirname + '/../client'));
+app.use(express.static(__dirname + '/../crossfilter'));
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }));
 // parse application/json
@@ -384,6 +451,11 @@ app.get('/', function(req, res) {
     res.sendFile(path.resolve(__dirname + '/../client/index.html'));
 });
 
+app.get('/square', function(req, res) {
+    // res.sendFile(__dirname + '/../client/index.html');
+    res.sendFile(path.resolve(__dirname + '/../crossfilter/index.html'));
+});
+
 // ************  api Notification *************
 app.post('/notify', function(req, res) {
     var campaign = req.body;
@@ -514,7 +586,7 @@ app.get('/messagedetail/:appid/:msgid', function(req, res) {
                 var key = member.key;
                 var options = {
                     method: 'GET',
-                    url: 'https://onesignal.com/api/v1/notifications/'+msgid+'?app_id='+appid,
+                    url: 'https://onesignal.com/api/v1/notifications/' + msgid + '?app_id=' + appid,
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': 'Basic ' + key
@@ -578,7 +650,7 @@ app.get('/timelineData', function(req, res) {
 app.post('/timelineData', function(req, res) {
     // console.log(JSON.stringify(req.body));
     var option = req.body;
-    dbgetdata(option,
+    dbgetTimeLineData(option,
         function onSuccess(timelineData) {
             // Làm thưa data
             var step = Math.round(timelineData.length / 2880);
@@ -599,6 +671,19 @@ app.post('/timelineData', function(req, res) {
         function onFailed(error) {
             // socket.emit('tld.response.error', error);
             res.json({ timelineData: [], error: error, samplestep: 30 * 1 });
+        });
+});
+
+app.post('/loginData', function(req, res) {
+    // console.log(JSON.stringify(req.body));
+    var option = req.body;
+    dbgetLoginData(option,
+        function onSuccess(loginData) {
+            res.json({ loginData: loginData });
+        },
+        function onFailed(error) {
+            // socket.emit('tld.response.error', error);
+            res.json({ loginData: [], error: error });
         });
 });
 
@@ -756,7 +841,7 @@ tracker.on('connection', function(socket) {
     });
 
     socket.on('tk.timelineData', function(option) {
-        dbgetdata(option,
+        dbgetTimeLineData(option,
             function onSuccess(timelineData) {
                 socket.emit('tld.response', timelineData);
             },

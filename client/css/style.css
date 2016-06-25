@@ -9,8 +9,16 @@ body {
     shape-rendering: crispEdges;
 }
 
+.x.axis line {
+    stroke: lightgrey;
+}
+
 .x.axis path {
     display: none;
+}
+
+.hover-line {
+    stroke: #6E7B8B;
 }
 
 .line {

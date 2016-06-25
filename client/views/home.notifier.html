@@ -1,0 +1,159 @@
+<div class="row panel-body">
+    <div class="col-lg-8">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-bar-chart-o fa-fw"></i> Single target. {{target.selected()}}
+                <div class="pull-right">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                            {{target.selected()}}
+                            <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu pull-right" role="menu">
+                            <li ng-repeat-start="group in target.groups"><a href ng-click="target.selectedGroup = $index; target.selectedApp = -1"><b>{{group.groupname}}</b></a></li>
+                            <li ng-repeat="app in group.members"><a href ng-click="target.selectedGroup = $parent.$index; target.selectedApp = $index">{{app.name}}</a></li>
+                            <li ng-repeat-end role="separator" class="divider"></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <!-- /.panel-heading -->
+            <div class="panel-body">
+                <div class="input-group">
+                    <span class="input-group-addon" id="basic-addon3">name</span>
+                    <input type="text" class="form-control" id="basic-url" aria-describedby="basic-addon3" ng-model="target.one.username">
+                </div>
+                <div class="input-group">
+                    <span class="input-group-addon" id="basic-addon3">user id</span>
+                    <input type="text" class="form-control" id="basic-url" aria-describedby="basic-addon3" ng-model="target.one.userid">
+                </div>
+                <div class="input-group">
+                    <span class="input-group-addon" id="basic-addon3">title</span>
+                    <input type="text" class="form-control" id="basic-url" aria-describedby="basic-addon3" ng-model="target.one.title">
+                </div>
+                <div class="input-group">
+                    <span class="input-group-addon" id="basic-addon3">message</span>
+                    <input type="text" class="form-control" id="basic-url" aria-describedby="basic-addon3" ng-model="target.one.message">
+                </div>
+                <br>
+                <button type="button" class="btn btn-danger pull-right" ng-click="sendSingleTarget()">Send</button>
+            </div>
+            <!-- /.panel-body -->
+        </div>
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-bar-chart-o fa-fw"></i> Multiple targets. {{target.selected()}}
+                <a href ng-click="updatePendingMessage()">
+                    <i ng-class="viewangle.loading ? 'fa fa-refresh fa-spin fa-fw' :'fa fa-refresh fa-fw'"></i> load from db</a>
+                or
+                <a href ng-click="uploadPendingMessage()">
+                    <i class="fa fa-upload" aria-hidden="true"></i> upload .csv</a>
+                <div class="pull-right">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                            {{target.selected()}}
+                            <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu pull-right" role="menu">
+                            <li ng-repeat-start="group in target.groups"><a href ng-click="target.selectedGroup = $index; target.selectedApp = -1"><b>{{group.groupname}}</b></a></li>
+                            <li ng-repeat="app in group.members"><a href ng-click="target.selectedGroup = $parent.$index; target.selectedApp = $index">{{app.name}}</a></li>
+                            <li ng-repeat-end role="separator" class="divider"></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <table>
+                    <tr>
+                        <th>id</th>
+                        <th>userid </th>
+                        <th>username</th>
+                        <th>title</th>
+                        <th>message</th>
+                        <th>send_after</th>
+                        <th>target</th>
+                    </tr>
+                    <tr ng-repeat="noti in pendingnotifications | limitTo:10">
+                        <td>{{ noti.id }}</td>
+                        <td>{{ noti.userid }}</td>
+                        <td>{{ noti.username }}</td>
+                        <td>{{ noti.title }}</td>
+                        <td>{{ noti.message }}</td>
+                        <td>{{ noti.send_after }}</td>
+                        <td>{{ noti.target }}</td>
+                    </tr>
+                </table>
+                <br>
+                <div>size: {{pendingnotifications.length}}</div>
+                <button type="button" class="btn btn-danger pull-right" ng-click="sendMultipleTarget()">Send</button>
+            </div>
+        </div>
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-bar-chart-o fa-fw"></i> Last sent messages (top last {{sentnotifications.length}} mgs)
+                <a href ng-click="loadLastSentMsg()">
+                    <i ng-class="viewangle.loading ? 'fa fa-refresh fa-spin fa-fw' :'fa fa-refresh fa-fw'"></i> refresh from db</a>
+            </div>
+            <div class="panel-body">
+                <table>
+                    <tr>
+                        <th>id</th>
+                        <th>userid </th>
+                        <th>username</th>
+                        <th>message</th>
+                        <th>send_after</th>
+                        <th>error</th>
+                        <th>onesignalid</th>
+                        <th>cpmid</th>
+                        <th>reipts</th>
+                        <th>target</th>
+                    </tr>
+                    <tr ng-repeat="noti in sentnotifications">
+                        <td>{{ noti.id }}</td>
+                        <td>{{ noti.userid }}</td>
+                        <td>{{ noti.username }}</td>
+                        <td>{{ noti.message }}</td>
+                        <td>{{ noti.send_after }}</td>
+                        <td>{{ noti.error }}</td>
+                        <td><a target="_blank" href="/messagedetail/{{ noti.target }}/{{noti.onesignalid}}">{{ target.getmsgdetail(noti.onesignalid) }}</a></td>
+                        <!-- <td><a target="_blank" href="#" ui-sref="home.notifier?/{{ noti.target }}/{{noti.onesignalid}}">{{ target.getmsgdetail(noti.onesignalid) }}</a></td> -->
+                        <td>{{ noti.campaignid }}</td>
+                        <td>{{ noti.recipients }}</td>
+                        <td>{{ target.getappname(noti.target) }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <!-- /.col-lg-8 -->
+    <div class="col-lg-4">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-bar-chart-o fa-fw"></i> Last campaigns (top last {{sentcampaigns.length}} campaigns)
+                <a href ng-click="loadLastSentCampaigns()">
+                    <i ng-class="viewangle.loading ? 'fa fa-refresh fa-spin fa-fw' :'fa fa-refresh fa-fw'"></i> refresh from db</a>
+            </div>
+            <!-- /.panel-heading -->
+            <div class="panel-body">
+                <table>
+                    <tr>
+                        <th>id</th>
+                        <th>campaign name </th>
+                        <th>type</th>
+                        <th>create date</th>
+                        <th>reipts</th>
+                    </tr>
+                    <tr ng-repeat="camp in sentcampaigns">
+                        <td><a href ng-click="loadSentMsgByCampaign({{ camp.id }})">{{ camp.id }}</a></td>
+                        <td>{{ camp.name }}</td>
+                        <td>{{ camp.type }}</td>
+                        <td>{{ camp.sentdate }}</td>
+                        <td>{{ camp.recipients }}</td>
+                    </tr>
+                </table>
+            </div>
+            <!-- /.panel-body -->
+        </div>
+    </div>
+    <!-- /.col-lg-4 -->
+</div>

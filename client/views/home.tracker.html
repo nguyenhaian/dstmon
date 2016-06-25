@@ -1,0 +1,214 @@
+<!-- /.navbar-top-links -->
+<div onload="loaded()" class="navbar-default sidebar" role="navigation">
+    <div class="sidebar-nav navbar-collapse">
+        <ul class="nav" id="side-menu">
+            <li>
+                <label class="title">Date Selection
+                </label>
+            </li>
+            <li>
+                <a href="#"><i class="fa fa-edit fa-fw"></i> Time Selection<span class="fa arrow"></span></a>
+                <ul class="nav nav-second-level">
+                    <li>
+                        <label>
+                            <input type="radio" ng-model="datasource.selectedEarlyTime" value="0"> Date&nbsp;
+                            <input type="date" ng-model="datasource.selectedDate" />
+                        </label>
+                    </li>
+                    <li>
+                        <label>
+                            <input type="radio" ng-model="datasource.selectedEarlyTime" value="-1"> Date Range
+                        </label>
+                    </li>
+                    <li>
+                        <label>
+                            From:
+                            <input type="date" ng-model="datasource.selectedDateFrom" />
+                            <br> To:
+                            <input type="date" ng-model="datasource.selectedDateTo" />
+                        </label>
+                    </li>
+                    <li>
+                        <label ng-disabled="true">
+                            <input type="radio" ng-disabled="true" value="48" ng-model="datasource.selectedEarlyTime"> Last 48h (disabled)
+                        </label>
+                    </li>
+                    <li>
+                        <label>
+                            <input type="radio" value="24" ng-model="datasource.selectedEarlyTime"> Last 24h
+                        </label>
+                    </li>
+                    <li>
+                        <label>
+                            <input type="radio" value="12" ng-model="datasource.selectedEarlyTime"> Last 12h
+                        </label>
+                    </li>
+                    <li>
+                        <label>
+                            <input type="radio" value="6" ng-model="datasource.selectedEarlyTime"> Last 6h
+                        </label>
+                    </li>
+                    <li>
+                        <label>
+                            <input type="radio" checked="true" value="1" ng-model="datasource.selectedEarlyTime"> Last 1h
+                        </label>
+                    </li>
+                    <li>
+                        <label>
+                            <input type="radio" value="0.5" ng-model="datasource.selectedEarlyTime"> Last 30m
+                        </label>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <label class="title">Input Source Selection
+                    <a href="#" ng-click="updateViewAngleOption()">
+                        <i ng-class="viewangle.loading ? 'fa fa-refresh fa-spin fa-fw' :'fa fa-refresh fa-fw'"></i></a>
+                    ({{datasource.loadtime}}s)
+                </label>
+            </li>
+            <li class="sidebar-search" ng-if="false">
+                <div class="input-group custom-search-form">
+                    <input type="text" class="form-control" placeholder="Search...">
+                    <span class="input-group-btn">
+                                    <button class="btn btn-default" type="button">
+                                        <i class="fa fa-search"></i>
+                                    </button>
+                                </span>
+                </div>
+                <!-- /input-group -->
+            </li>
+            <li>
+                <a href="#"><i class="fa fa-bar-chart-o fa-fw"></i> Select App ({{countSelectedOpe()}})<span class="fa arrow"></span></a>
+                <ul class="nav nav-second-level">
+                    <li>
+                        <label>
+                            <input type="checkbox" ng-model="datasource.selectedOpe['5000']" ng-change="viewangle.updateGraph()"> Game 3C</label>
+                    </li>
+                    <li>
+                        <label>
+                            <input type="checkbox" ng-model="datasource.selectedOpe['500']" ng-change="viewangle.updateGraph()"> Đấu Trường</label>
+                    </li>
+                    <li>
+                        <label>
+                            <input type="checkbox" ng-model="datasource.selectedOpe['5200']" ng-change="viewangle.updateGraph()"> 52 Fun</label>
+                    </li>
+                    <li>
+                        <label>
+                            <input type="checkbox" ng-model="datasource.selectedOpe['1000']" ng-change="viewangle.updateGraph()"> Siam Play</label>
+                    </li>
+                    <li>
+                        <label>
+                            <input type="checkbox" ng-model="datasource.selectedOpe['6000']" ng-change="viewangle.updateGraph()"> UWin</label>
+                    </li>
+                </ul>
+                <!-- /.nav-second-level -->
+            </li>
+            <li>
+                <a href="#"><i class="fa fa-table fa-fw"></i> Select OS ({{countSelectedOs()}})<span class="fa arrow"></span></a>
+                <ul class="nav nav-second-level">
+                    <li>
+                        <label>
+                            <input type="checkbox" ng-model="datasource.selectedOs['iOS']" ng-change="viewangle.updateGraph()"> iOS</label>
+                    </li>
+                    <li>
+                        <label>
+                            <input type="checkbox" ng-model="datasource.selectedOs['Android']" ng-change="viewangle.updateGraph()"> Android</label>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <a href="#"><i class="fa fa-edit fa-fw"></i> Select By Packagename ({{(datasource.selectedBundle.length>0)}})<span class="fa arrow"></span></a>
+                <ul class="nav nav-second-level">
+                    <li>
+                        <label>
+                            <input type="text" ng-model="datasource.selectedBundle">
+                        </label>
+                    </li>
+                </ul>
+            </li>
+            <li ng-if="false">
+                <a href="#"><i class="fa fa-sitemap fa-fw"></i> Multi-Level Dropdown<span class="fa arrow"></span></a>
+                <ul class="nav nav-second-level">
+                    <li>
+                        <a href="#">Second Level Item</a>
+                    </li>
+                    <li>
+                        <a href="#">Second Level Item</a>
+                    </li>
+                    <li>
+                        <a href="#">Third Level <span class="fa arrow"></span></a>
+                        <ul class="nav nav-third-level">
+                            <li>
+                                <a href="#">Third Level Item</a>
+                            </li>
+                            <li>
+                                <a href="#">Third Level Item</a>
+                            </li>
+                            <li>
+                                <a href="#">Third Level Item</a>
+                            </li>
+                            <li>
+                                <a href="#">Third Level Item</a>
+                            </li>
+                        </ul>
+                        <!-- /.nav-third-level -->
+                    </li>
+                </ul>
+                <!-- /.nav-second-level -->
+            </li>
+            <li>
+                <label class="title">View Angle&nbsp;&nbsp;
+                </label>
+            </li>
+            <li>
+                <label>
+                    <input type="radio" checked="true" ng-value="viewangle.list.all" ng-model="viewangle.selectedView" ng-change="viewangle.updateGraph()"> &nbsp;CCU
+                </label>
+            </li>
+            <!---->
+            <li>
+                <label>
+                    <input type="radio" checked="true" ng-value="viewangle.list.gameserver" ng-model="viewangle.selectedView" ng-change="viewangle.updateGraph()"> &nbsp;Game Server
+                </label>
+                <!-- <a href="#">
+                    <input type="radio" ng-value="viewangle.list.gameserver" ng-model="viewangle.selectedView"> &nbsp;Game Server ({{countSelectedGameServerSelection()}})<span class="fa arrow"></span>
+                </a>
+                <ul class="nav nav-second-level">
+                    <li ng-repeat="(ipaddress, selected) in viewangle.serverList">
+                        <label>
+                            <input type="checkbox" ng-model="viewangle.serverList[ipaddress]" ng-click="viewangle.serverListUpdateSelection()"> {{ipaddress}}
+                        </label>
+                    </li>
+                </ul> -->
+            </li>
+            <li>
+                <label>
+                    <input type="radio" checked="true" ng-value="viewangle.list.gamescene" ng-model="viewangle.selectedView" ng-change="viewangle.updateGraph()"> &nbsp;Game Scene
+                </label>
+                <!-- <a href="#">
+                    <input type="radio" ng-value="viewangle.list.gamescene" ng-model="viewangle.selectedView"> &nbsp;Game Scene ({{countSelectedSceneSelection()}})<span class="fa arrow"></span>
+                </a>
+                <ul class="nav nav-second-level">
+                    <li ng-repeat="(scene, selected) in viewangle.sceneList">
+                        <label>
+                            <input type="checkbox" ng-model="viewangle.sceneList[scene]" ng-click="viewangle.sceneListUpdateSelection()"> {{scene}}
+                        </label>
+                    </li>
+                </ul> -->
+            </li>
+        </ul>
+    </div>
+    <!-- /.sidebar-collapse -->
+</div>
+<!-- /.navbar-static-side -->
+<!-- SVG containers-->
+<div id="page-wrapper">
+    <div id="svgcontainer"></div>
+    <div rg-range-picker="timeRangePicker" labels="myDatetimeLabels" class="ng-isolate-scope" on-time-change="viewangle.updateXScale"> </div>
+</div>
+<!-- SVG containers-->
+<div id="page-wrapper">
+    <div id="svgcontainer2"></div>
+    <div rg-range-picker="timeRangePicker" labels="myDatetimeLabels" class="ng-isolate-scope" on-time-change="viewangle.updateXScale"> </div>
+</div>

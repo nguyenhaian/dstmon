@@ -5,8 +5,8 @@
         .module('chartApp')
         .factory('socket', ['d3s', '$rootScope', '$location', '$http', function(d3s, $rootScope, $location, $http) {
             var absUrl = $location.absUrl();
-            var indexofsharp  = absUrl.indexOf('#');
-            if(indexofsharp > 0){
+            var indexofsharp = absUrl.indexOf('#');
+            if (indexofsharp > 0) {
                 absUrl = absUrl.substring(0, indexofsharp);
             }
             var startLoadingTime = null;
@@ -38,9 +38,36 @@
                         status: 'done',
                         duration: duration
                     });
-                    d3s.fillData(jsondata, samplestep);
+                    d3s.fillTimeLineData(jsondata, samplestep);
                 }, function errorCallback(error) {
                     console.log(getTimeStamp() + " <---- response timeline error: " + error);
+                    $rootScope.$broadcast('tld.response', {
+                        status: 'error',
+                        error: error,
+                        duration: duration
+                    });
+                });
+                startLoadingTime = moment();
+            }
+
+            function loginData(option) { // {oncache:false, limit, from, to}
+                console.log(getTimeStamp() + " ----> request loginData data: " + JSON.stringify(option));
+                // socket.emit("tk.loginData", option); // tk: tracker
+                $http.post('/loginData', option, {}).then(function successCallBack(response) {
+                    if (response.data.error != null) {
+                        alert(response.data.error)
+                    }
+
+                    var jsondata = response.data.loginData;
+                    console.log(getTimeStamp() + " <---- response loginData data: " + jsondata.length);
+                    var duration = moment.duration(moment().diff(startLoadingTime)).asSeconds();
+                    $rootScope.$broadcast('tld.response', {
+                        status: 'done',
+                        duration: duration
+                    });
+                    d3s.fillLoginData(jsondata);
+                }, function errorCallback(error) {
+                    console.log(getTimeStamp() + " <---- response loginData error: " + error);
                     $rootScope.$broadcast('tld.response', {
                         status: 'error',
                         error: error,
@@ -75,7 +102,7 @@
                     status: 'done',
                     duration: duration
                 });
-                d3s.fillData(jsondata);
+                d3s.fillTimeLineData(jsondata);
             });
 
             socket.on('tld.response.error', function(error) {
@@ -96,6 +123,7 @@
 
                 d3s.setDist(jsondata.data);
                 timelineData({ oncache: true, limit: 100 });
+                // loginData({ oncache: true, limit: 72 });
             });
 
             return {
@@ -119,7 +147,8 @@
                         console.log(error);
                     });
                 },
-                timelineData: timelineData
+                timelineData: timelineData,
+                loginData: loginData
             };
         }]);
 })();
