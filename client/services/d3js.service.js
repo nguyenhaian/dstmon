@@ -25,102 +25,102 @@
 
             // var parseDate = d3.time.format("%d-%m-%Y %H:%M:%S").parse; //"09-05-2016 11:56:10"
 
-            var mongoParseDate = function(_id) {
-                return moment(parseInt(_id.substring(0, 8), 16) * 1000);
-            }
+            // var mongoParseDate = function(_id) {
+            //     return moment(parseInt(_id.substring(0, 8), 16) * 1000);
+            // }
 
             // prepareData: format data từ jsondata, do dó phải set jsondata trước
-            var prepareData = function(jsondata, samplestep, viewangle, datasource, distsInfo) {
-                var data = [],
-                    listSceneName = [],
-                    listIPAddress = [],
-                    daterange = {};
-                // format data
-                // {
-                //     time:"9/5/2016 10:26:36",
-                //     gameview8006: 12,
-                //     loginview:1
-                // }
-                var renderPoints = jsondata.length; // tính theo % số điểm đc render trên tổng bộ dữ liệu totalPoints
-                console.log('renderPoints: ' + renderPoints);
-                console.log('render step min: ' + samplestep + '(s)');
-                var maxRenderPoint = width / 1; // 1 pixel một mẫu
-                // ->
-                var renderstep = Math.floor(renderPoints / maxRenderPoint) + 1;
+            // var prepareData = function(jsondata, samplestep, viewangle, datasource, distsInfo, updateDateRangeViewAngle) {
+            //     var data = [],
+            //         listSceneName = [],
+            //         listIPAddress = [],
+            //         daterange = {};
+            //     // format data
+            //     // {
+            //     //     time:"9/5/2016 10:26:36",
+            //     //     gameview8006: 12,
+            //     //     loginview:1
+            //     // }
+            //     var renderPoints = jsondata.length; // tính theo % số điểm đc render trên tổng bộ dữ liệu totalPoints
+            //     console.log('renderPoints: ' + renderPoints);
+            //     console.log('render step min: ' + samplestep + '(s)');
+            //     var maxRenderPoint = width / 1; // 1 pixel một mẫu
+            //     // ->
+            //     var renderstep = Math.floor(renderPoints / maxRenderPoint) + 1;
 
-                console.log('render step: ' + renderstep + '|' + (renderstep * samplestep) + '(s)');
+            //     console.log('render step: ' + renderstep + '|' + (renderstep * samplestep) + '(s)');
 
-                daterange.start = mongoParseDate(jsondata[jsondata.length - 1]._id);
-                daterange.end = mongoParseDate(jsondata[0]._id);
+            //     daterange.start = mongoParseDate(jsondata[jsondata.length - 1]._id);
+            //     daterange.end = mongoParseDate(jsondata[0]._id);
 
-                updateDateRangeViewAngle(daterange);
+            //     updateDateRangeViewAngle(daterange);
 
-                for (var i = jsondata.length - 1; i >= 0; i -= renderstep) {
-                    var _item = jsondata[i];
-                    var item = { date: mongoParseDate(_item._id) };
+            //     for (var i = jsondata.length - 1; i >= 0; i -= renderstep) {
+            //         var _item = jsondata[i];
+            //         var item = { date: mongoParseDate(_item._id) };
 
-                    _.forOwn(_item.formattedData, function(_dist, _distid) { //(value, key)
-                        if (_distid == 0) {
-                            return;
-                        }
+            //         _.forOwn(_item.formattedData, function(_dist, _distid) { //(value, key)
+            //             if (_distid == 0) {
+            //                 return;
+            //             }
 
-                        if (!_.has(distsInfo, _distid)) {
-                            // TODO: sẽ phải cạp nhật distInfo
-                            console.log("distsInfo need update " + _distid);
-                            return true; // continue
-                        }
+            //             if (!_.has(distsInfo, _distid)) {
+            //                 // TODO: sẽ phải cạp nhật distInfo
+            //                 console.log("distsInfo need update " + _distid);
+            //                 return true; // continue
+            //             }
 
-                        // 1. check datasource.selectedOpe
-                        var op = distsInfo[_distid].op;
-                        if (datasource.selectedOpe[op] == false) {
-                            return true; // continue
-                        }
-                        // 2. check datasource.selectedOs
-                        var os = distsInfo[_distid].os;
-                        if (datasource.selectedOs[os] == false) {
-                            return true; // continue
-                        }
-                        // 3. check datasource.selectedBundle
-                        var bundle = distsInfo[_distid].bundle;
-                        if (!_.isEmpty(datasource.selectedBundle) && datasource.selectedBundle !== bundle) {
-                            return true; // continue
-                        }
+            //             // 1. check datasource.selectedOpe
+            //             var op = distsInfo[_distid].op;
+            //             if (datasource.selectedOpe[op] == false) {
+            //                 return true; // continue
+            //             }
+            //             // 2. check datasource.selectedOs
+            //             var os = distsInfo[_distid].os;
+            //             if (datasource.selectedOs[os] == false) {
+            //                 return true; // continue
+            //             }
+            //             // 3. check datasource.selectedBundle
+            //             var bundle = distsInfo[_distid].bundle;
+            //             if (!_.isEmpty(datasource.selectedBundle) && datasource.selectedBundle !== bundle) {
+            //                 return true; // continue
+            //             }
 
-                        // thêm các trường ở viewangle vào item
-                        produceDataItem(viewangle, _dist, distsInfo[_distid], item, listSceneName, listIPAddress);
-                    });
+            //             // thêm các trường ở viewangle vào item
+            //             produceDataItem(viewangle, _dist, distsInfo[_distid], item, listSceneName, listIPAddress);
+            //         });
 
-                    // console.log(JSON.stringify(item))
-                    data.push(item);
-                };
+            //         // console.log(JSON.stringify(item))
+            //         data.push(item);
+            //     };
 
-                // fill data to rows 1
-                if (viewangle.selectedView == viewangle.list.all) {
-                    // do nothing
-                } else if (viewangle.selectedView == viewangle.list.gamescene) {
-                    _.forEach(listSceneName, function(value) {
-                        if (!_.has(data[0], value)) {
-                            data[0][value] = 0;
-                        }
-                    })
-                } else { // gameserver
-                    _.forEach(listIPAddress, function(value) {
-                        if (!_.has(data[0], value)) {
-                            data[0][value] = 0;
-                        }
-                    })
-                }
+            //     // fill data to rows 1
+            //     if (viewangle.selectedView == viewangle.list.all) {
+            //         // do nothing
+            //     } else if (viewangle.selectedView == viewangle.list.gamescene) {
+            //         _.forEach(listSceneName, function(value) {
+            //             if (!_.has(data[0], value)) {
+            //                 data[0][value] = 0;
+            //             }
+            //         })
+            //     } else { // gameserver
+            //         _.forEach(listIPAddress, function(value) {
+            //             if (!_.has(data[0], value)) {
+            //                 data[0][value] = 0;
+            //             }
+            //         })
+            //     }
 
-                // console.log(viewangle.sceneList);
-                console.log('data[0]:' + JSON.stringify(data[0]));
-                // console.log('data[1]:' + JSON.stringify(data[1]));
-                // console.log('data[2]:' + JSON.stringify(data[2]));
+            //     // console.log(viewangle.sceneList);
+            //     console.log('data[0]:' + JSON.stringify(data[0]));
+            //     // console.log('data[1]:' + JSON.stringify(data[1]));
+            //     // console.log('data[2]:' + JSON.stringify(data[2]));
 
-                return data;
-            }
+            //     return data;
+            // }
 
             // prepareData: format data từ jsondata, do dó phải set jsondata trước
-            var prepareData2 = function(jsondata, samplestep, viewangle, datasource, distsInfo) {
+            var prepareData2 = function(jsondata, samplestep, viewangle, datasource, distsInfo, updateDateRangeViewAngle) {
                 var data = [],
                     listSceneName = [],
                     listIPAddress = [],
@@ -245,158 +245,153 @@
                 return data;
             }
 
-            var updateDateRangeViewAngle = function(daterange) {
-                // 4. update viewangle về cho view controller
-                $rootScope.$broadcast('d3s.updateDateRangeViewAngle', daterange);
-            }
+            // var produceDataItem = function(viewangle, _dist, distinfo, item, listSceneName, listIPAddress) {
+            //     // 1. xử lý thông tin ccu
+            //     _.forOwn(_dist.data, function(_gamedata, _ipadd) {
+            //         if (!_.includes(listIPAddress, _ipadd)) {
+            //             listIPAddress.push(_ipadd);
+            //             // console.log("+ _ipadd " + _ipadd + " _dist: " + JSON.stringify(_dist))
+            //         }
 
-            var produceDataItem = function(viewangle, _dist, distinfo, item, listSceneName, listIPAddress) {
-                // 1. xử lý thông tin ccu
-                _.forOwn(_dist.data, function(_gamedata, _ipadd) {
-                    if (!_.includes(listIPAddress, _ipadd)) {
-                        listIPAddress.push(_ipadd);
-                        // console.log("+ _ipadd " + _ipadd + " _dist: " + JSON.stringify(_dist))
-                    }
+            //         // _gamedata = {"8004":{GAME_VIEW:1}};
+            //         _.forOwn(_gamedata, function(_scenedata, _gameid) {
+            //             // _scenedata = {GAME_VIEW:1,LOGIN_VIEW:1};
+            //             // if (_gameid !== "8021" && _gameid !== "0000") return true; // continue
 
-                    // _gamedata = {"8004":{GAME_VIEW:1}};
-                    _.forOwn(_gamedata, function(_scenedata, _gameid) {
-                        // _scenedata = {GAME_VIEW:1,LOGIN_VIEW:1};
-                        // if (_gameid !== "8021" && _gameid !== "0000") return true; // continue
+            //             _.forOwn(_scenedata, function(_onlineusercount, _scenename) {
+            //                 var scene = _scenename;
+            //                 if (_scenename === "GAME_VIEW")
+            //                     scene = _scenename + "_" + _gameid;
 
-                        _.forOwn(_scenedata, function(_onlineusercount, _scenename) {
-                            var scene = _scenename;
-                            if (_scenename === "GAME_VIEW")
-                                scene = _scenename + "_" + _gameid;
+            //                 if (!_.includes(listSceneName, scene)) {
+            //                     // contains
+            //                     listSceneName.push(scene);
+            //                 }
 
-                            if (!_.includes(listSceneName, scene)) {
-                                // contains
-                                listSceneName.push(scene);
-                            }
+            //                 if (viewangle.selectedView == 'all') {
+            //                     if (!_.has(item, 'ccu')) item['ccu'] = 0;
+            //                     item['ccu'] += _onlineusercount;
 
-                            if (viewangle.selectedView == 'all') {
-                                if (!_.has(item, 'ccu')) item['ccu'] = 0;
-                                item['ccu'] += _onlineusercount;
-                                
-                                if (!_.has(item, distinfo.op)) item[distinfo.op] = 0;
-                                item[distinfo.op] += _onlineusercount;
-                                
-                                if (!_.has(item, distinfo.os)) item[distinfo.os] = 0;
-                                item[distinfo.os] += _onlineusercount;
-                                
-                                if (!_.has(item, distinfo.bundle)) item[distinfo.bundle] = 0;
-                                item[distinfo.bundle] += _onlineusercount;
+            //                     if (!_.has(item, distinfo.op)) item[distinfo.op] = 0;
+            //                     item[distinfo.op] += _onlineusercount;
 
-                            } else if (viewangle.selectedView == 'gamescene') {
-                                if (!_.has(item, scene)) item[scene] = 0;
-                                item[scene] += _onlineusercount;
-                            } else { // gameserver
-                                if (!_.has(item, _ipadd)) item[_ipadd] = 0;
-                                item[_ipadd] += _onlineusercount;
-                            }
+            //                     if (!_.has(item, distinfo.os)) item[distinfo.os] = 0;
+            //                     item[distinfo.os] += _onlineusercount;
 
-                        });
+            //                     if (!_.has(item, distinfo.bundle)) item[distinfo.bundle] = 0;
+            //                     item[distinfo.bundle] += _onlineusercount;
 
-                    });
-                });
-            }
+            //                 } else if (viewangle.selectedView == 'gamescene') {
+            //                     if (!_.has(item, scene)) item[scene] = 0;
+            //                     item[scene] += _onlineusercount;
+            //                 } else { // gameserver
+            //                     if (!_.has(item, _ipadd)) item[_ipadd] = 0;
+            //                     item[_ipadd] += _onlineusercount;
+            //                 }
 
-            var findMaxY = function(data) { // Define function "findMaxY"
-                var maxYValues = data.map(function(d) {
-                    if (d.visible) {
-                        return d3.max(d.values, function(value) { // Return max rating value
-                            return value.user_count;
-                        })
-                    }
-                });
-                return d3.max(maxYValues);
-            }
+            //             });
 
-            /**
-             * Called when a user mouses over a line.
-             */
-            var handleMouseOverLine = function(lineData, index) {
-                    //debug("MouseOver line [" + containerId + "] => " + index)
-                    console.log("MouseOver line [" + index + "]");
-                    console.log(lineData);
+            //         });
+            //     });
+            // }
 
-                    // user is interacting
-                    // userCurrentlyInteracting = true;
-                }
-                /**
-                 * Called when a user mouses over the graph.
-                 */
-            var handleMouseOverGraph = function(event) {
-                var mouseX = event.pageX - hoverLineXOffset;
-                var mouseY = event.pageY - hoverLineYOffset;
-                if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
-                    // show the hover line
-                    hoverLine.classed("hide", false);
+            // var findMaxY = function(data) { // Define function "findMaxY"
+            //     var maxYValues = data.map(function(d) {
+            //         if (d.visible) {
+            //             return d3.max(d.values, function(value) { // Return max rating value
+            //                 return value.user_count;
+            //             })
+            //         }
+            //     });
+            //     return d3.max(maxYValues);
+            // }
 
-                    // set position of hoverLine
-                    hoverLine.attr("x1", mouseX).attr("x2", mouseX)
+            // /**
+            //  * Called when a user mouses over a line.
+            //  */
+            // var handleMouseOverLine = function(lineData, index) {
+            //         //debug("MouseOver line [" + containerId + "] => " + index)
+            //         console.log("MouseOver line [" + index + "]");
+            //         console.log(lineData);
 
-                    displayValueLabelsForPositionX(mouseX);
-                    // user is interacting
-                    userCurrentlyInteracting = true;
-                    currentUserPositionX = mouseX;
-                } else {
-                    // proactively act as if we've left the area since we're out of the bounds we want
-                    handleMouseOutGraph(event)
-                }
-            }
+            //         // user is interacting
+            //         // userCurrentlyInteracting = true;
+            //     }
+            //     /**
+            //      * Called when a user mouses over the graph.
+            //      */
+            // var handleMouseOverGraph = function(event) {
+            //     var mouseX = event.pageX - hoverLineXOffset;
+            //     var mouseY = event.pageY - hoverLineYOffset;
+            //     if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+            //         // show the hover line
+            //         hoverLine.classed("hide", false);
+
+            //         // set position of hoverLine
+            //         hoverLine.attr("x1", mouseX).attr("x2", mouseX)
+
+            //         displayValueLabelsForPositionX(mouseX);
+            //         // user is interacting
+            //         userCurrentlyInteracting = true;
+            //         currentUserPositionX = mouseX;
+            //     } else {
+            //         // proactively act as if we've left the area since we're out of the bounds we want
+            //         handleMouseOutGraph(event)
+            //     }
+            // }
 
 
-            var handleMouseOutGraph = function(event) {
-                // hide the hover-line
-                hoverLine.classed("hide", true);
+            // var handleMouseOutGraph = function(event) {
+            //     // hide the hover-line
+            //     hoverLine.classed("hide", true);
 
-                setValueLabelsToLatest();
+            //     setValueLabelsToLatest();
 
-                //debug("MouseOut graph [" + containerId + "] => " + mouseX + ", " + mouseY)
+            //     //debug("MouseOut graph [" + containerId + "] => " + mouseX + ", " + mouseY)
 
-                // user is no longer interacting
-                userCurrentlyInteracting = false;
-                currentUserPositionX = -1;
-            }
+            //     // user is no longer interacting
+            //     userCurrentlyInteracting = false;
+            //     currentUserPositionX = -1;
+            // }
 
-            /**
-             * Display the data values at position X in the legend value labels.
-             */
-            var displayValueLabelsForPositionX = function(posX, withTransition) {
+            // /**
+            //  * Display the data values at position X in the legend value labels.
+            //  */
+            // var displayValueLabelsForPositionX = function(posX, withTransition) {
 
-                var animate = false;
-                if (withTransition != undefined) {
-                    if (withTransition) {
-                        animate = true;
-                    }
-                }
-                var dateToShow;
-                svg.selectAll(".line_group").select(".legend")
-                    .text(function(d, i) {
-                        var relPos = posX / width;
-                        var dataindex = Math.round(relPos * (d.values.length - 1));
+            //     var animate = false;
+            //     if (withTransition != undefined) {
+            //         if (withTransition) {
+            //             animate = true;
+            //         }
+            //     }
+            //     var dateToShow;
+            //     svg.selectAll(".line_group").select(".legend")
+            //         .text(function(d, i) {
+            //             var relPos = posX / width;
+            //             var dataindex = Math.round(relPos * (d.values.length - 1));
 
-                        if (i == 0) {
-                            dateToShow = moment(d.values[dataindex].date)._d; // chỉ lấy 1 lần, vì bị lặp lại theo số lines.
-                        }
-                        return '[' + d.name.substring(0,20) + '] ' + d.values[dataindex].user_count;
-                    })
+            //             if (i == 0) {
+            //                 dateToShow = moment(d.values[dataindex].date)._d; // chỉ lấy 1 lần, vì bị lặp lại theo số lines.
+            //             }
+            //             return '[' + d.name.substring(0, 20) + '] ' + d.values[dataindex].user_count;
+            //         })
 
-                // show the date
-                svg.select('text.date-label').text(dateToShow.toDateString() + " " + dateToShow.toLocaleTimeString())
-            }
+            //     // show the date
+            //     svg.select('text.date-label').text(dateToShow.toDateString() + " " + dateToShow.toLocaleTimeString())
+            // }
 
 
-            /**
-             * Set the value labels to whatever the latest data point is.
-             */
-            var setValueLabelsToLatest = function(withTransition) {
-                displayValueLabelsForPositionX(width, withTransition);
-            }
+            // /**
+            //  * Set the value labels to whatever the latest data point is.
+            //  */
+            // var setValueLabelsToLatest = function(withTransition) {
+            //     displayValueLabelsForPositionX(width, withTransition);
+            // }
 
-            var drawSVG = function(data) {
-                d3.select("#svgcontainer").select("svg").remove();
-                svg = d3.select("#svgcontainer").append("svg")
+            var drawSVG = function(svgcontainer, data) {
+                d3.select(svgcontainer).select("svg").remove();
+                svg = d3.select(svgcontainer).append("svg")
                     .attr("width", width + margin.left + margin.right)
                     .attr("height", height + margin.top + margin.bottom)
                     .append("g")
@@ -574,7 +569,7 @@
                     })
                     // .attr("dy", ".35em")
                     .text(function(d) {
-                        return d.name.substring(0,25);
+                        return d.name.substring(0, 25);
                     })
                     .style("fill", function(d) {
                         return color(d.name);
@@ -582,58 +577,60 @@
             }
 
             return {
-                init: function(_viewangle, _datasource) {
-                    viewangle = _viewangle;
-                    datasource = _datasource;
+                // init: function(svgcontainer, _viewangle, _datasource) {
+                //     viewangle = _viewangle;
+                //     datasource = _datasource;
 
-                    margin = {
-                        top: 20,
-                        right: 200,
-                        bottom: 30,
-                        left: 56
-                    };
-                    width = 920 - margin.left - margin.right;
-                    height = 412 - margin.top - margin.bottom;
-                    x = d3.time.scale()
-                        .range([0, width]);
-                    y = d3.scale.linear()
-                        .range([height, 0]);
-                    color = d3.scale.category20();
+                //     margin = {
+                //         top: 20,
+                //         right: 350,
+                //         bottom: 30,
+                //         left: 56
+                //     };
+                //     width = 920 - margin.left - margin.right;
+                //     height = 300 - margin.top - margin.bottom;
+                //     x = d3.time.scale()
+                //         .range([0, width]);
+                //     y = d3.scale.linear()
+                //         .range([height, 0]);
+                //     color = d3.scale.category20();
 
-                    xAxis = d3.svg.axis().scale(x).tickSize(-height).tickSubdivide(1).orient("bottom");
+                //     xAxis = d3.svg.axis().scale(x).tickSize(-height).tickSubdivide(1).orient("bottom");
 
-                    yAxis = d3.svg.axis().scale(y).orient("left");
+                //     yAxis = d3.svg.axis().scale(y).orient("left");
 
-                    line = d3.svg.line()
-                        // .interpolate("basis")
-                        .interpolate("monotone")
-                        .defined(function(d) {
-                            // console.log(d); 
-                            return !isNaN(d.user_count);
-                        })
-                        .x(function(d) {
-                            return x(d.date);
-                        })
-                        .y(function(d) {
-                            return y(d.user_count);
-                        });
-                    // .defined(function(d) { return d.y!=null; });
+                //     line = d3.svg.line()
+                //         // .interpolate("basis")
+                //         .interpolate("monotone")
+                //         .defined(function(d) {
+                //             // console.log(d); 
+                //             return !isNaN(d.user_count);
+                //         })
+                //         .x(function(d) {
+                //             return x(d.date);
+                //         })
+                //         .y(function(d) {
+                //             return y(d.user_count);
+                //         });
+                //     // .defined(function(d) { return d.y!=null; });
 
-                    container = document.querySelector('#svgcontainer');
+                //     container = document.querySelector(svgcontainer);
 
-                    hoverLineXOffset = margin.left + $(container).offset().left;
-                    hoverLineYOffset = margin.top + $(container).offset().top;
+                //     hoverLineXOffset = margin.left + $(container).offset().left;
+                //     hoverLineYOffset = margin.top + $(container).offset().top;
 
-                    $('.rg-range-picker').css({ "max-width": width });
-                },
+                //     $('.rg-range-picker').css({ "max-width": width });
+                // },
                 setDist: function(_jsondata) {
                     _.extend(distsInfo, _jsondata);
 
+
+                    // TODO: cai nay ko chay
                     for (var i = distsInfo.length - 1; i >= 0; i--) {
                         distsInfo[i].bundle = distsInfo[i].bundle.replace(/\;$/, '').replace(/\./g, '_');
                     };
                 },
-                updateView: function(_viewangle, _datasource) {
+                updateView: function(svgcontainer, _viewangle, _datasource) {
                     console.log('updateView');
                     if (!_.isEmpty(_viewangle)) { viewangle = _viewangle; } else { console.log('using default viewangle') }
                     if (!_.isEmpty(_datasource)) { datasource = _datasource; } else { console.log('using default datasource') }
@@ -641,10 +638,10 @@
                     // console.log('datasource: ' + JSON.stringify(datasource));
 
                     // var data = prepareData2(jsonLoginData, samplestep, viewangle, datasource, distsInfo);
-                    var data = prepareData(jsondata, samplestep, viewangle, datasource, distsInfo);
+                    var data = prepareData(jsondata, samplestep, viewangle, datasource, distsInfo, updateDateRangeViewAngle);
 
                     // The main draw SVG
-                    drawSVG(data);
+                    drawSVG(svgcontainer, data);
                 },
                 updateXScale: function(selectedViewTimeRange) {
                     console.log('updateXScale');
@@ -657,27 +654,27 @@
                             return d.visible ? line(d.values) : null; // If d.visible is true then draw line for this d selection
                         })
                 },
-                fillTimeLineData: function(_jsondata, _samplestep) {
-                    if (Array.isArray(_jsondata) && _jsondata.length > 0) {
-                        jsondata = _jsondata;
-                        samplestep = _samplestep;
-                    } else {
-                        console.log('something wrong.')
-                        alert('no data');
-                        return;
-                    }
+                // fillTimeLineData: function(svgcontainer, _jsondata, _samplestep, updateDateRangeViewAngle) {
+                //     if (Array.isArray(_jsondata) && _jsondata.length > 0) {
+                //         jsondata = _jsondata;
+                //         samplestep = _samplestep;
+                //     } else {
+                //         console.log('something wrong.')
+                //         alert('no data');
+                //         return;
+                //     }
 
-                    // console.log('viewangle: ' + JSON.stringify(viewangle));
-                    // console.log('datasource: ' + JSON.stringify(datasource));
-                    var data = prepareData(jsondata, samplestep, viewangle, datasource, distsInfo);
+                //     // console.log('viewangle: ' + JSON.stringify(viewangle));
+                //     // console.log('datasource: ' + JSON.stringify(datasource));
+                //     var data = prepareData(jsondata, samplestep, viewangle, datasource, distsInfo, updateDateRangeViewAngle);
 
-                    // The main draw SVG
-                    // note: tạm thời ko cần draw lúc này, chỉ cần prepareData là đủ.
-                    // vì datepicker sẽ chạy và gọi hàm updateView
-                    // update: vẫn cần để vì khi dữ liệu đổ về từ socketio do ng dùng tự cập nhật
-                    drawSVG(data);
-                },
-                fillLoginData: function(_jsondata) {
+                //     // The main draw SVG
+                //     // note: tạm thời ko cần draw lúc này, chỉ cần prepareData là đủ.
+                //     // vì datepicker sẽ chạy và gọi hàm updateView
+                //     // update: vẫn cần để vì khi dữ liệu đổ về từ socketio do ng dùng tự cập nhật
+                //     drawSVG(svgcontainer, data);
+                // },
+                fillLoginData: function(svgcontainer, _jsondata) {
                     if (Array.isArray(_jsondata) && _jsondata.length > 0) {
                         jsonLoginData = _jsondata;
                     } else {
@@ -695,7 +692,7 @@
                     // note: tạm thời ko cần draw lúc này, chỉ cần prepareData là đủ.
                     // vì datepicker sẽ chạy và gọi hàm updateView
                     // update: vẫn cần để vì khi dữ liệu đổ về từ socketio do ng dùng tự cập nhật
-                    drawSVG(data);
+                    drawSVG(svgcontainer, data);
                 }
             }
 

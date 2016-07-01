@@ -307,6 +307,26 @@ app.get('/timelineCount', function(req, res) {
     res.json({ timeLineDataCount: _.size(timelineFormattedData) });
 });
 
+// ***** đoạn này để trả về response 200 cho client ***** //
+
+app.get('/client3C', function(req, res) {
+    res.json({});
+});
+app.get('/client52', function(req, res) {
+    res.json({});
+});
+app.get('/clientdt', function(req, res) {
+    res.json({});
+});
+app.get('/clientuwin', function(req, res) {
+    res.json({});
+});
+app.get('/clientsiam', function(req, res) {
+    res.json({});
+});
+
+// ************************* END ************************* //
+
 app.get('/clients', function(req, res) {
     var _formattedData = formatClientData();
     res.json(_formattedData);

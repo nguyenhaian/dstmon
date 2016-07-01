@@ -85,9 +85,10 @@ function createOneSignalMessage(campaignid, targetapp, recipient) {
             "ios_badgeCount": 1
         }
     };
-    // console.log("options.json: " + JSON.stringify(options.json));
+    console.log("---> m "+ recipient.id);
 
     function callback(error, response, body) {
+        console.log("<--- m "+ recipient.id);
         if (error) {
             console.log('error: ' + JSON.stringify(error));
         }
@@ -101,6 +102,13 @@ function createOneSignalMessage(campaignid, targetapp, recipient) {
             values(${recipient.userid},${recipient.username},${recipient.message},${new Date(send_after)},${err},${body.id},${campaignid},${body.recipients},${targetapp.appid})`
                 .catch(function(err) {
                     console.log("createOneSignalMessage insert error " + JSON.stringify(err));
+                });
+
+            var status = 1; // done
+            if (body.errors) status = 2; // đã bắn nhưng lỗi.
+            sql.query `update PendingMessage set status=${status} where id=${recipient.id} and status is null`
+                .catch(function(err) {
+                    console.log("createOneSignalMessage update error " + JSON.stringify(err));
                 });
         } else {
             console.log('body: ' + JSON.stringify(body));
@@ -182,7 +190,7 @@ function dbgetTimeLineData(option, onSuccess, onFailed) {
                 end = objectIdWithTimestamp(end._d);
             } else if (option.date == null && option.datefrom != null && option.dateto != null) {
                 start = moment(option.datefrom).startOf('day').add(5, 'hours');
-                end = moment(option.dateto).startOf('day').add(5, 'hours');
+                end = moment(option.dateto).startOf('day').add(29, 'hours');
 
                 if (moment.duration(end.diff(start)).asDays() > 10) {
                     onFailed('date range exceed the limit 10 days');
@@ -237,8 +245,7 @@ function dbgetTimeLineData(option, onSuccess, onFailed) {
 function dbgetLoginData(option, onSuccess, onFailed) {
     if (option.limit) {
         var limit = 72;
-        if (option.limit) limit = option.limit;
-        if (limit > 72) limit = 72;
+        if (option.limit) limit = option.limit / 10;
         // else limit = timelineFormattedData.length;
 
         // onSuccess(timelineFormattedData.slice(0, limit));
@@ -305,9 +312,9 @@ app.use(compression());
 app.use(express.static(__dirname + '/../client'));
 app.use(express.static(__dirname + '/../crossfilter'));
 // parse application/x-www-form-urlencoded
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 // parse application/json
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '50mb' }));
 
 app.use(function(req, res, next) {
     res.header("Access-Control-Allow-Origin", "http://203.162.121.174:3001");
@@ -478,7 +485,7 @@ app.post('/notify', function(req, res) {
     }
 
     function startCampaign(campaignid) {
-        if (campaign.targetType == 'manually') {
+        if (campaign.targetType == 'manually' || campaign.targetType == 'game') {
             // 2. tạo các message trong bảng message
             var mc = campaign.recipients.length;
             if (!group.members[campaign.selectedApp])
@@ -562,7 +569,7 @@ app.get('/loadLastSentCampaigns', function(req, res) {
 app.post('/getPendingMessage', function(req, res) {
     var postdata = req.body;
     sql.connect(mssqlconfig).then(function() {
-        sql.query `select * from PendingMessage where target=${postdata.target}`
+        sql.query `select top 200 * from PendingMessage where target=${postdata.target} and status is null`
             .then(function(recordset) {
                 res.json({ data: recordset });
             }).catch(function(err) {
@@ -616,6 +623,11 @@ app.get('/users', function(req, res) {
 
 app.get('/dist', function(req, res) {
     res.json(distsInfo);
+});
+app.post('/tkgetdist', function(req, res) {
+    var option = req.body;
+    realtimemode = option.realtime;
+    res.json({ status: true, data: distsInfo })
 });
 
 app.post('/dist', function(req, res) {

@@ -140,7 +140,7 @@ angular.module('rgkevin.datetimeRangePicker', ['vr.directives.slider'])
 
             function renderSlider () {
                 if(!sliderAlreadyRender && scope.data.hasTimeSliders) {
-                    sliderContainer.append( slider );
+                    sliderContainer.prepend( slider );
                     $compile( slider )( scope );
                     sliderAlreadyRender = true;
 
@@ -178,7 +178,8 @@ angular.module('rgkevin.datetimeRangePicker', ['vr.directives.slider'])
 
                         scope.onTimeChange()({
                             from: moment(scope.data.time.startdatetime).add(scope.data.time.from, 'minutes'),
-                            to: moment(scope.data.time.startdatetime).add(scope.data.time.to, 'minutes')
+                            to: moment(scope.data.time.startdatetime).add(scope.data.time.to, 'minutes'),
+                            data:scope.data.time
                         });
 
                     }, 500);

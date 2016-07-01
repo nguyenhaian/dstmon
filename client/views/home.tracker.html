@@ -202,13 +202,7 @@
     <!-- /.sidebar-collapse -->
 </div>
 <!-- /.navbar-static-side -->
-<!-- SVG containers-->
 <div id="page-wrapper">
-    <div id="svgcontainer"></div>
-    <div rg-range-picker="timeRangePicker" labels="myDatetimeLabels" class="ng-isolate-scope" on-time-change="viewangle.updateXScale"> </div>
-</div>
-<!-- SVG containers-->
-<div id="page-wrapper">
-    <div id="svgcontainer2"></div>
-    <div rg-range-picker="timeRangePicker" labels="myDatetimeLabels" class="ng-isolate-scope" on-time-change="viewangle.updateXScale"> </div>
+    <sd3-chart id='sd3chart1' type='ccu' view-angle='viewangle' source-option='datasource' reg-chart='regsd3chart(item)'></sd3-chart>
+    <sd3-chart id='sd3chart2' type='logininfo' view-angle='viewangle' source-option='datasource' reg-chart='regsd3chart(item)'></sd3-chart>
 </div>

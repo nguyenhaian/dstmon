@@ -175,12 +175,12 @@
 /* line 176, ../range-picker.sass */
 .clean-slider .bar.full {
   height: 10px;
-  background-color: #eeeeee;
+  background-color: #f5f5f5;
   border-radius: 10px;
 }
 /* line 183, ../range-picker.sass */
 .clean-slider .bar.selection {
-  background-color: #ffc955;
+  background-color: #eeeeee;
   height: 100%;
 }
 /* line 190, ../range-picker.sass */
@@ -206,19 +206,19 @@
 }
 /* line 218, ../range-picker.sass */
 .clean-slider .pointer.low, .clean-slider .pointer.high {
-  background-color: #4C8AE6;
-  width: 20px;
-  height: 20px;
+  background-color: #b7b7b7;
+  width: 16px;
+  height: 16px;
   text-indent: -999px;
   overflow: hidden;
   border-radius: 50%;
   position: relative;
-  margin-top: -5px;
+  margin-top: -3px;
 }
 /* line 228, ../range-picker.sass */
 .clean-slider .pointer.low:after, .clean-slider .pointer.high:after {
   content: " ";
-  background-color: #ffd16e;
+  background-color: #ffffff;
   width: 12px;
   height: 12px;
   position: absolute;

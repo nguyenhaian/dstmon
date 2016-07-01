@@ -108,7 +108,7 @@
                         <th>reipts</th>
                         <th>target</th>
                     </tr>
-                    <tr ng-repeat="noti in sentnotifications">
+                    <tr ng-repeat="noti in sentnotifications| limitTo:200">
                         <td>{{ noti.id }}</td>
                         <td>{{ noti.userid }}</td>
                         <td>{{ noti.username }}</td>

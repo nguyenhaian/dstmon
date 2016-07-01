@@ -96,8 +96,10 @@
                 recipients: $scope.pendingnotifications
             }
 
+            console.log('-->campaign');
+
             $http.post('/notify', campaign, {}).then(function successCallBack(response) {
-                console.log(" <---- response data: " + JSON.stringify(response));
+                console.log(" <---- response data: " + JSON.stringify(response.data));
                 // TODO: xử lý in ra logs
             }, function errorCallback(error) {
                 console.log(error);

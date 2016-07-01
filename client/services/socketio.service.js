@@ -19,7 +19,7 @@
                 return moment().format("YYYY-MM-DD HH:mm:ss.SSS");
             }
 
-            function timelineData(option) { // {oncache:false, limit, from, to}
+            function timelineData(option, onSuccess) { // {oncache:false, limit, from, to}
                 console.log(getTimeStamp() + " ----> request timeline data: " + JSON.stringify(option));
                 // socket.emit("tk.timelineData", option); // tk: tracker
                 $http.post('/timelineData', option, {}).then(function successCallBack(response) {
@@ -38,7 +38,7 @@
                         status: 'done',
                         duration: duration
                     });
-                    d3s.fillTimeLineData(jsondata, samplestep);
+                    onSuccess(jsondata, samplestep);
                 }, function errorCallback(error) {
                     console.log(getTimeStamp() + " <---- response timeline error: " + error);
                     $rootScope.$broadcast('tld.response', {
@@ -50,7 +50,7 @@
                 startLoadingTime = moment();
             }
 
-            function loginData(option) { // {oncache:false, limit, from, to}
+            function loginData(option, onSuccess) { // {oncache:false, limit, from, to}
                 console.log(getTimeStamp() + " ----> request loginData data: " + JSON.stringify(option));
                 // socket.emit("tk.loginData", option); // tk: tracker
                 $http.post('/loginData', option, {}).then(function successCallBack(response) {
@@ -65,7 +65,7 @@
                         status: 'done',
                         duration: duration
                     });
-                    d3s.fillLoginData(jsondata);
+                    onSuccess(jsondata);
                 }, function errorCallback(error) {
                     console.log(getTimeStamp() + " <---- response loginData error: " + error);
                     $rootScope.$broadcast('tld.response', {
@@ -114,6 +114,7 @@
                 });
             });
 
+            // deprecated
             socket.on('dist.response', function(jsondata) {
                 console.log(getTimeStamp() + " <---- response dist data: " + _.size(jsondata.data));
                 if (!jsondata.status) {
@@ -122,31 +123,42 @@
                 }
 
                 d3s.setDist(jsondata.data);
-                timelineData({ oncache: true, limit: 100 });
                 // loginData({ oncache: true, limit: 72 });
             });
 
             return {
-                reg: function() {
+                reg: function(onSuccess) {
                     console.log(getTimeStamp() + " ----> reg");
-                    socket.emit("tk.on", { realtime: false });
-                },
-                getDist: function() { // TODO: chua truyen vao alreadyHaveList
-                    console.log(getTimeStamp() + " ----> getDist");
-                    // socket.emit("tk.getdist");
-                    $http.post('/dist', [], {}).then(function successCallBack(response) {
-                        var jsondata = response.data.data;
-                        console.log(getTimeStamp() + " <---- response dist data: " + _.size(jsondata.data));
-                        if (!jsondata.status) {
+                    // socket.emit("tk.on", { realtime: false });
+                    var option = { realtime: false };
+                    $http.post('/tkgetdist', option, {}).then(function successCallBack(response) {
+                        if (!response.data.status) {
                             console.log('dist.response false');
                             return;
                         }
-
-                        d3s.setDist(jsondata.data);
+                        var jsondata = response.data.data;
+                        console.log(getTimeStamp() + " <---- response dist data: " + _.size(jsondata));
+                        onSuccess(jsondata);                        
                     }, function errorCallback(error) {
                         console.log(error);
                     });
                 },
+                // getDist: function() { // TODO: chua truyen vao alreadyHaveList
+                //     console.log(getTimeStamp() + " ----> getDist");
+                //     // socket.emit("tk.getdist");
+                //     $http.post('/dist', [], {}).then(function successCallBack(response) {
+                //         var jsondata = response.data.data;
+                //         console.log(getTimeStamp() + " <---- response dist data: " + _.size(jsondata.data));
+                //         if (!jsondata.status) {
+                //             console.log('dist.response false');
+                //             return;
+                //         }
+
+                //         d3s.setDist(jsondata.data);
+                //     }, function errorCallback(error) {
+                //         console.log(error);
+                //     });
+                // },
                 timelineData: timelineData,
                 loginData: loginData
             };
