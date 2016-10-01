@@ -31,7 +31,9 @@ var onesignal = {
         members: [
             { name: 'Đấu Trường Unity (& Android)', appid: '05052740-e9a0-11e4-9294-7f1cdb478da5', key: 'MDUwNTI3ZDYtZTlhMC0xMWU0LTkyOTUtNGI2ZDI0NDUzMDcy' },
             { name: 'Đấu Trường Tiến Lên', appid: '7b7b28de-9db4-4752-800c-9034d4ea79d4', key: 'ZjY0YjhjMzEtNjAyMC00OGRkLWFmNTQtOWQ4OWNlMzdkOTA4' },
-            { name: 'Đấu Trường 2016', appid: 'b1b029c9-81c1-4c78-a80f-091547041204', key: 'NDBmMmRhYzMtNTFhYy00OGI4LTllY2YtYzllNGVkNWMxZjVl' }
+            { name: 'Đấu Trường iOS new', appid: 'abfbab6c-ec9c-44d7-88b9-973c8088c20c', key: 'ZmZkODQ4MDEtN2IzYS00NjljLTk0ZjEtYTNjOWY2MzJjNDY2' },
+            { name: 'Đấu Trường 2016', appid: 'b1b029c9-81c1-4c78-a80f-091547041204', key: 'NDBmMmRhYzMtNTFhYy00OGI4LTllY2YtYzllNGVkNWMxZjVl' },
+            { name: 'Xanh 9', appid: '78398b12-0ba0-4879-8ab7-7b7ef6a3aa67', key: 'ZDBhMjRiYTktMWI4Zi00MzhkLTlmMGMtMzA5NGZmYWExYmUz' }
         ]
     }, {
         groupname: 'Group Siam Play',
@@ -39,7 +41,7 @@ var onesignal = {
             { name: 'Siam Unity', appid: '4f1d9f21-2646-42aa-807a-d13bacc41c56', key: 'ZjdjOTIwNjctZDFjMS00NTMwLTgxZTUtMmNhM2Q4MDIyYTRj' },
             { name: 'Siam Hilo', appid: 'e44e3328-2666-44b5-8d95-383b4aacfe8b', key: 'ODE0Y2Q1YzItMzE5NS00MmU5LWE5YjMtZGYzMzA4NGEwNTYz' },
             { name: 'Siam Dummy (& Android)', appid: '60c4f721-75c6-4f10-b736-3ff480038f61', key: 'Y2IyZDViNTEtMjY3NC00OWU5LTk4ZTQtZDRmZjg3YmE1MzIy' },
-            { name: 'Siam 9K', appid: '3c76eabc-4bdb-44bc-8673-b61e816b6396', key: 'ZTk1OGY5YjEtOTBjNS00OWRjLWE3ZDUtOTUwZGY5ZDNkNThl' }
+            { name: 'Siam 9K', appid: 'be0add25-0d69-4565-9bac-df36c6dc73be', key: 'MjdhODM0Y2UtMWE1YS00MDhiLWIxYzctYWVkOTI0MzNmMzhh' }
         ]
     }, {
         groupname: 'Group UWin',
@@ -63,10 +65,31 @@ sql.on('error', function(err) {
 
 function createOneSignalMessage(campaignid, targetapp, recipient) {
     var tags = [{ "key": "username", "relation": "=", "value": recipient.username }];
-    if (targetapp.userid) {
-        tags = [{ "key": "userid", "relation": "=", "value": recipient.userid }];
+    // if (targetapp.userid) {
+    //     tags = [{ "key": "userid", "relation": "=", "value": recipient.userid }];
+    // }
+    var send_after = undefined;
+    if (recipient.send_after) {
+        send_after = moment(recipient.send_after).subtract(7, 'hours');
+        if (send_after.isAfter(moment()))
+            send_after = send_after.toString();
+        else
+            send_after = undefined;
     }
-    var send_after = recipient.send_after || new Date().toString();
+
+    var json = {
+        "app_id": targetapp.appid,
+        "tags": tags,
+        "data": { data: recipient.data || '' },
+        "headings": { "en": recipient.title },
+        "contents": { "en": recipient.message },
+        "ios_badgeType": "Increase",
+        "ios_badgeCount": 1
+    }
+
+    if (send_after)
+        json.send_after = send_after;
+
     var options = {
         method: 'POST',
         url: 'https://onesignal.com/api/v1/notifications',
@@ -74,42 +97,54 @@ function createOneSignalMessage(campaignid, targetapp, recipient) {
             'Content-Type': 'application/json',
             'Authorization': 'Basic ' + targetapp.key
         },
-        json: {
-            "app_id": targetapp.appid,
-            "tags": tags,
-            "data": { data: recipient.data || '' },
-            "headings": { "en": recipient.title },
-            "contents": { "en": recipient.message },
-            "send_after": send_after,
-            "ios_badgeType": "Increase",
-            "ios_badgeCount": 1
-        }
+        json: json
     };
-    console.log("---> m "+ recipient.id);
+    console.log("---> m " + recipient.id);
 
     function callback(error, response, body) {
-        console.log("<--- m "+ recipient.id);
+        console.log("<--- m " + recipient.id);
         if (error) {
             console.log('error: ' + JSON.stringify(error));
         }
-        if (response.statusCode == 200) {
+        if (response && response.statusCode == 200) {
+            // servermon - 4 createOneSignalMessage insert error { "name": "RequestError", "message": "Validation failed for parameter 'param4'. Invalid date.", "code": "EPARAM", "number": "EPARAM", "precedingErrors": [] }
+            // servermon - 4 < -- - m 3800
+            // servermon - 4 createOneSignalMessage insert error { "name": "ConnectionError", "message": "Connection is closed.", "code": "ECONNCLOSED" }
+            // servermon - 4 createOneSignalMessage update error { "name": "ConnectionError", "message": "Connection is closed.", "code": "ECONNCLOSED" }
+            // servermon - 4 < -- - m 2497
+            // servermon - 4 createOneSignalMessage insert error { "name": "ConnectionError", "message": "Connection is closed.", "code": "ECONNCLOSED" }
+            // servermon - 4 createOneSignalMessage update error { "name": "ConnectionError", "message": "Connection is closed.", "code": "ECONNCLOSED" }
+            // servermon - 4 < -- - m 2496
+            // servermon - 4 createOneSignalMessage insert error { "name": "RequestError", "message": "Validation failed for parameter 'param4'. Invalid date.", "code": "EPARAM", "number": "EPARAM", "precedingErrors": [] }
+            // servermon - 4 < -- - m 2492
+
             // console.log('body: ' + JSON.stringify(body));
             //body: {"id":"4bcfd959-a712-473e-bd6a-7d05760a1531","recipients":1}
             //body: {"id":"","recipients":0,"errors":["All included players are not subscribed"]}
-            var err = body.errors ? body.errors[0] : 'none';
-            err = err.substring(0, 250); // maxlength
-            sql.query `insert into  Message (userid, username, message, send_after, error, onesignalid, campaignid, recipients, target) 
-            values(${recipient.userid},${recipient.username},${recipient.message},${new Date(send_after)},${err},${body.id},${campaignid},${body.recipients},${targetapp.appid})`
-                .catch(function(err) {
-                    console.log("createOneSignalMessage insert error " + JSON.stringify(err));
-                });
 
-            var status = 1; // done
-            if (body.errors) status = 2; // đã bắn nhưng lỗi.
-            sql.query `update PendingMessage set status=${status} where id=${recipient.id} and status is null`
-                .catch(function(err) {
-                    console.log("createOneSignalMessage update error " + JSON.stringify(err));
-                });
+            sql.connect(mssqlconfig).then(function() {
+                var err = body.errors ? body.errors[0] : 'none';
+                err = err.substring(0, 250); // maxlength
+
+                // var querystring = 'insert into  Message (userid, username, message, send_after, error, onesignalid, campaignid, recipients, target, pendingmsgid) ' +
+                // 'values(\'' + recipient.userid + '\', N\'' + recipient.username + '\', N\'' + recipient.message + '\', \'' + moment(send_after).format("YYYY-MM-DD HH:mm:ss") +
+                //  '\', \'' + err + '\', \'' + body.id + '\', \'' + campaignid + '\', \'' + body.recipients + '\', \'' + targetapp.appid + '\', \'' + recipient.id + '\')';
+
+                sql.query `insert into  Message (userid, username, message, send_after, error, onesignalid, campaignid, recipients, target, pendingmsgid) 
+                    values(${recipient.userid},${recipient.username},${recipient.message},${moment(send_after).format("YYYY-MM-DD HH:mm:ss")},${err},${body.id},${campaignid},${body.recipients},${targetapp.appid},${recipient.id})`
+                    .catch(function(err) {
+                        console.log("createOneSignalMessage insert error " + JSON.stringify(err));
+                    });
+
+                var status = 1; // done
+                if (body.errors) status = 2; // đã bắn nhưng lỗi.
+                sql.query `update PendingMessage set status=${status} where id=${recipient.id} and status = 0`
+                    .catch(function(err) {
+                        console.log("createOneSignalMessage update error " + JSON.stringify(err));
+                    });
+            }).catch(function(err) {
+                console.log({ err: err });
+            });
         } else {
             console.log('body: ' + JSON.stringify(body));
         }
@@ -135,8 +170,26 @@ var realtimemode = false;
 mongoose.connect('mongodb://localhost/CustomerMonitor');
 
 var SnapshotData = mongoose.model('SnapshotData', { time: String, formattedData: {} });
-var Dist = mongoose.model("Dist", { id: String, data: { os: String, bundle: String, op: Number } });
+var Dist = mongoose.model("Dist", { id: String, data: { os: String, bundle: String, app: String } });
 var LoginData = mongoose.model('LoginData', { time: Date, formattedData: {} });
+var LoginFailed = mongoose.model('LoginFailed', { time: Date, app: String, bundle: String, os: String, host: String, gameid: Number, username: String, errorcode: Number, errormsg: String, d: Number });
+var LoadConfig = mongoose.model('LoadConfig', { time: Date, app: String, bundle: String, os: String, 'r1': Number, 'r2': Number, 'r3': Number, 'r4': Number, 'r5': Number });
+var LoginSuccess = mongoose.model('LoginSuccess', { time: Date, app: String, bundle: String, os: String, 'd1r1': Number, 'd1r2': Number, 'd1r3': Number, 'd1r4': Number, 'd1r5': Number, 'd2r1': Number, 'd2r2': Number, 'd2r3': Number, 'd2r4': Number, 'd2r5': Number });
+// {'event':'payment_success', type:type, amount:amount, d:0.1}
+// {'event':'payment_failed', type:type, amount:amount, errcode:'', d:0.1}
+// {'event':'send_sms', add:'+8028'}
+var OpenPayment = mongoose.model('OpenPayment', { time: Date, app: String, bundle: String, os: String, fromScene: String, vip: Number, gold: Number, duration: Number }); // -> chưa ghi
+var PaymentSuccess = mongoose.model('PaymentSuccess', { time: Date, app: String, bundle: String, os: String, type: String, amount: Number, d: Number });
+var PaymentFailed = mongoose.model('PaymentFailed', { time: Date, app: String, bundle: String, os: String, type: String, amount: Number, errcode: String, d: Number });
+var SendSMS = mongoose.model('SendSMS', { time: Date, app: String, bundle: String, os: String, add: String });
+
+var SiamAction = mongoose.model('SiamAction', { date: Date, clicksuggestdummy: Number, showsuggestdummy: Number, timeleftdummy: {}, timeplaydummy: {} });
+// {
+//     "type": 1,
+//     "title": "nạp gold",
+//     "url": "http://mobile.tracking.dautruong.info/img/banner/banner140916.jpg"
+// }
+var SMessage = mongoose.model('SMessage', { date: Date, type: Number, title: String, url: String, urllink: String, pos: { x: Number, y: Number } });
 
 // init data when server startup
 /*************************************************************/
@@ -304,6 +357,69 @@ function dbgetLoginData(option, onSuccess, onFailed) {
 
     }
 }
+
+function dbgetLoadConfigActionData(option, onSuccess, onFailed) {
+    if (option.limit) {
+        var limit = 72;
+        if (option.limit) limit = option.limit / 10;
+        // else limit = timelineFormattedData.length;
+
+        // onSuccess(timelineFormattedData.slice(0, limit));
+        // socket.emit('tld.response', timelineFormattedData.slice(0, limit));
+        console.log(getTimeStamp() + ' start find on DB');
+        LoadConfig.find({})
+            // .select('_id time formattedData')
+            // .where('time').gt(start)
+            .sort({ _id: -1 })
+            .limit(limit)
+            .exec(function(err, docs) {
+                if (err) {
+                    onFailed(err);
+                    return console.log(err)
+                };
+                console.log(getTimeStamp() + ' tld.response: ' + docs.length);
+                onSuccess(docs);
+            });
+    } else {
+        var start, end;
+        if (option.date != null) {
+            // find on DB
+            start = moment(option.date).startOf('day').add(5, 'hours'); //.format("YYYY-MM-DD HH:mm:ss");
+            end = moment(option.date).startOf('day').add(29, 'hours'); //.format("YYYY-MM-DD HH:mm:ss");
+
+            start = objectIdWithTimestamp(start._d);
+            end = objectIdWithTimestamp(end._d);
+        } else if (option.date == null && option.datefrom != null && option.dateto != null) {
+            start = moment(option.datefrom).startOf('day').add(5, 'hours');
+            end = moment(option.dateto).startOf('day').add(5, 'hours');
+
+            if (moment.duration(end.diff(start)).asDays() > 10) {
+                onFailed('date range exceed the limit 10 days');
+                return;
+            }
+            start = objectIdWithTimestamp(start._d);
+            end = objectIdWithTimestamp(end._d);
+        } else {
+            onFailed('invalid option');
+            return;
+        }
+
+        console.log(getTimeStamp() + ' start find on DB');
+        LoadConfig.find({ _id: { $gt: start, $lt: end } })
+            // .select('_id time formattedData')
+            // .where('time').gt(start)
+            .sort({ _id: -1 })
+            .exec(function(err, docs) {
+                if (err) {
+                    onFailed(err);
+                    return console.log(err)
+                };
+                console.log(getTimeStamp() + ' tld.response: ' + docs.length);
+                onSuccess(docs);
+            });
+
+    }
+}
 /*************************************************************/
 // SETTING
 // phải gọi enable compression trước khi gọi các setting khác
@@ -321,6 +437,10 @@ app.use(function(req, res, next) {
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
 });
+
+// set the view engine to ejs
+app.set('view engine', 'ejs');
+
 
 function getTimeStamp() {
     return (moment().format("YYYY-MM-DD HH:mm:ss"));
@@ -464,16 +584,15 @@ app.get('/square', function(req, res) {
 });
 
 // ************  api Notification *************
-app.post('/notify', function(req, res) {
-    var campaign = req.body;
-
+function notify(campaign, callback) {
+    console.log('--> notify');
     if (!onesignal.groups[campaign.selectedGroup]) {
-        res.json({ err: 'invalid selectedApp' });
+        callback({ err: 'invalid selectedApp' });
         return;
     }
 
     if (onesignal.onProcessing) {
-        res.json({ err: 'onesignal is onProcessing' });
+        callback({ err: 'onesignal is onProcessing' });
         return;
     } else {
         onesignal.onProcessing = true;
@@ -481,11 +600,11 @@ app.post('/notify', function(req, res) {
 
     function end(data) {
         onesignal.onProcessing = false;
-        res.json(data);
+        callback(data);
     }
 
     function startCampaign(campaignid) {
-        if (campaign.targetType == 'manually' || campaign.targetType == 'game') {
+        if (campaign.targetType == 'manually' || campaign.targetType == 'automatic' || campaign.targetType == 'FBFriends') {
             // 2. tạo các message trong bảng message
             var mc = campaign.recipients.length;
             if (!group.members[campaign.selectedApp])
@@ -500,7 +619,6 @@ app.post('/notify', function(req, res) {
                     _.forEach(group.members, function(targetapp) {
                         createOneSignalMessage(campaignid, targetapp, recipient);
                     });
-
                 }
             });
             end({ campaignid: campaignid, messagecount: mc });
@@ -519,13 +637,21 @@ app.post('/notify', function(req, res) {
             values(${campaign.name}, ${campaign.recipients.length},${campaign.targetType},${new Date()})`
             .then(function(recordset) {
                 var campaignid = recordset[0].id;
-                console.log('campaignid: ' + campaignid);
+                console.log('start campaignid: ' + campaignid);
                 startCampaign(campaignid);
             }).catch(function(err) {
                 end({ err: err });
             });
     }).catch(function(err) {
         end({ err: err });
+    });
+}
+
+app.post('/notify', function(req, res) {
+    var campaign = req.body;
+
+    notify(campaign, function(result) {
+        res.json(result);
     });
 });
 
@@ -566,19 +692,24 @@ app.get('/loadLastSentCampaigns', function(req, res) {
     });
 });
 
-app.post('/getPendingMessage', function(req, res) {
-    var postdata = req.body;
+function getPendingMessage(postdata, callback) {
     sql.connect(mssqlconfig).then(function() {
-        sql.query `select top 200 * from PendingMessage where target=${postdata.target} and status is null`
+        sql.query `select top 4000 * from PendingMessage where target=${postdata.target} and status = 0`
             .then(function(recordset) {
-                res.json({ data: recordset });
-            }).catch(function(err) {
-                res.json({ err: err });
+                callback({ data: recordset }, postdata.target);
             });
 
     }).catch(function(err) {
-        res.json({ err: err });
+        callback({ err: err }, postdata.target);
     });
+}
+
+app.post('/getPendingMessage', function(req, res) {
+    var postdata = req.body;
+    getPendingMessage(postdata, function callback(result, appid) {
+        res.json(result);
+    });
+
 });
 
 app.get('/messagedetail/:appid/:msgid', function(req, res) {
@@ -613,6 +744,43 @@ app.get('/messagedetail/:appid/:msgid', function(req, res) {
     };
 
     res.json({ err: 'appid not found' });
+});
+
+app.get('/loginfailed', function(req, res) {
+    // res.sendFile(__dirname + '/../client/index.html');
+
+    LoginFailed.find({})
+        // .select('_id time formattedData')
+        // .where('time').gt(lastHours)
+        .sort({ _id: -1 })
+        .limit(200)
+        .exec(function(err, docs) {
+            if (err) return res.json(err);
+            res.render('view_loginfailed', {
+                data: docs,
+                moment: moment
+            });
+        });
+
+});
+
+app.get('/siamaction', function(req, res) {
+    // res.sendFile(__dirname + '/../client/index.html');
+
+    SiamAction.find({})
+        // .select('_id time formattedData')
+        // .where('time').gt(lastHours)
+        .sort({ _id: -1 })
+        .limit(100)
+        .exec(function(err, docs) {
+            if (err) return res.json(err);
+            res.json(docs);
+            // res.render('view_loginfailed', {
+            //     data: docs,
+            //     moment: moment
+            // });
+        });
+
 });
 // ************** end api notification ***************
 
@@ -659,6 +827,36 @@ app.get('/timelineData', function(req, res) {
     res.json(timelineFormattedData);
 });
 
+app.get('/performancereport', function(req, res) {
+    var options = {
+        method: 'GET',
+        url: 'http://203.162.121.174:3000/ccus',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    };
+    // console.log("options.json: " + JSON.stringify(options.json));
+
+    function callback(error, response, body) {
+        // TODO
+        if (error) {
+            res.json({ err: error })
+            return;
+        }
+        res.setHeader('Content-Type', 'application/json');
+        res.send(JSON.stringify(JSON.parse(body), null, 3));
+
+        // res.render('view_performance', {
+        //     data: JSON.parse(body)
+        // });
+
+        // res.send(JSON.stringify({ a: 1 }, null, 3));
+    }
+
+    request(options, callback);
+});
+
+
 app.post('/timelineData', function(req, res) {
     // console.log(JSON.stringify(req.body));
     var option = req.body;
@@ -696,6 +894,19 @@ app.post('/loginData', function(req, res) {
         function onFailed(error) {
             // socket.emit('tld.response.error', error);
             res.json({ loginData: [], error: error });
+        });
+});
+
+app.post('/actionLoadConfig', function(req, res) {
+    // console.log(JSON.stringify(req.body));
+    var option = req.body;
+    dbgetLoadConfigActionData(option,
+        function onSuccess(data) {
+            res.json({ data: data });
+        },
+        function onFailed(error) {
+            // socket.emit('tld.response.error', error);
+            res.json({ data: [], error: error });
         });
 });
 
@@ -869,25 +1080,60 @@ tracker.on('connection', function(socket) {
 
 // game-loop
 setInterval(function() {
-    if (_.isEmpty(formattedData))
-        return;
-    var copy = _.cloneDeep(formattedData);
-    timelineFormattedData.unshift({ time: new Date(), formattedData: copy });
+    // if (_.isEmpty(formattedData))
+    //     return;
+    // var copy = _.cloneDeep(formattedData);
+    // timelineFormattedData.unshift({ time: new Date(), formattedData: copy });
 
-    var snapshotData = new SnapshotData({ time: new Date(), formattedData: copy });
-    snapshotData.save(function(err, logDoc) {
-        if (err) return console.error(err);
-        console.log('+SnapshotData');
-    });
+    // var snapshotData = new SnapshotData({ time: new Date(), formattedData: copy });
+    // snapshotData.save(function(err, logDoc) {
+    //     if (err) return console.error(err);
+    //     console.log('+SnapshotData');
+    // });
 
-    var maxlength = 24 * 60 * 60 / 30;
-    if (timelineFormattedData.length > maxlength)
-        timelineFormattedData.pop();
-}, 30000);
+    // var maxlength = 24 * 60 * 60 / 30;
+    // if (timelineFormattedData.length > maxlength)
+    //     timelineFormattedData.pop();
+    /*
+        var apps = [
+            { appid: 2, add: 'http://mobile.tracking.dautruong.info/notifymessage' },
+            // { appid: 2, add: 'http://mobile.dautruong.info/initdata.json' },
+            { appid: 3, add: 'http://mobile.tracking.siamplayth.com/notifymessage' }
+        ];
+        //1: lấy data về
+        _.forEach(apps, function(app) {
+            console.log('--> request pending message for ' + app.appid);
+            getPendingMessage({ target: app.appid }, function(result, appid) {
+                // result = { data: recordset }; or { err: err }
+                if (!result.data || result.data.length == 0) {
+                    console.log('<-- ' + appid + ' empty result');
+                    return;
+                } else {
+                    console.log('<-- ' + appid + ' got ' + result.data.length + ' messages');
+
+                    //2. bắn cho onesignal
+                    var campaign = {
+                        name: appid + '',
+                        targetType: 'automatic',
+                        selectedGroup: appid,
+                        selectedApp: -1,
+                        recipients: result.data
+                    }
+
+                    notify(campaign, function(result) {
+                        console.log(result);
+                    });
+                }
+            });
+        });
+    */
+
+}, 3 * 60 * 1000);
+
 
 // khởi động server.listen sau 3s để chắc chắn đã load data thành công từ DB
-setTimeout(function() {
-    server.listen(3003, function() {
-        console.log('listening on *:3003');
-    });
-}, 3000);
+// setTimeout(function() {
+server.listen(3003, function() {
+    console.log('listening on *:3003');
+});
+// }, 3000);

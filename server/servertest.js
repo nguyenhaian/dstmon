@@ -9,6 +9,10 @@ var request = require('request')
 var moment = require('moment')
 var mongoose = require('mongoose')
 var sql = require('mssql')
+var request = require('request');
+
+var FB = require('fb');
+FB.options({ version: 'v2.7' });
 
 var timelineFormattedData = [];
 var distsInfo = {}; // thông tin của các dist
@@ -32,35 +36,74 @@ var campaign = {
     recipients: ['$scope.target.one']
 }
 
-var request = require('request');
-var options = {
-    method: 'POST',
-    url: 'https://onesignal.com/api/v1/notifications',
-    headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Basic NTE1YmY2ZGItNzc2NS00NTMzLTgzNzQtZDNhOWJjYTI0MzY3'
-    },
-    json: {
-        "app_id": "0f372644-5bde-43bf-b5e0-15c5f720d6e2",
-        "tags": [{ "key": "username", "relation": "=", "value": "aann2009" }],
-        "data": { "text": "Đến giờ chơi game rồi nhé!" },
-        "headings": { "en": "Knock knock" },
-        "contents": { "en": "Đến giờ chơi game rồi nhé!" },
-        "ios_badgeType": "Increase",
-        "ios_badgeCount": 1
-    }
-};
+mongoose.connect('mongodb://localhost/CustomerMonitor');
 
-function callback(error, response, body) {
-    if (!error && response.statusCode == 200) {
-        console.log('response: ' + JSON.stringify(response));
-        console.log('body: ' + JSON.stringify(body));
-    } else {
-        console.log(error);
-    }
-}
+var MUser = mongoose.model('User', {
+    uid: Number,
+    app: Number,
+    email: String,
+    name: String, // không biết có nên thêm vip và gold vào ko
+    fbName: String,
+    fbID: Number,
+    d1: Date,
+    d2: Date,
+    disid: [], // list disid mà user đã active
+    dev: [], // list device mà user đã active
+    lDisid: String, // disid cuối cùng user active
+    lDev: String, // Device cuối cùng mà user active
+    fFB: [], // danh sách nhanh các bạn từ fFB cũng chơi game, limit 200 bạn
+    // ban đầu fG bao gồm fFB, fG: [{fbid:Number}]
+    // sau đó sẽ đc cập nhật thành, fG: [{fbid:Number, uid:Number, name:String, }]
+    lastUpdateFB: Date
+});
 
-request(options, callback);
+var SMessage = mongoose.model('SMessage', { date: Date, type: Number, title: String, url: String, urllink: String, pos: { x: Number, y: Number } });
+var smsg = new SMessage({
+    date: new Date(),
+    type: 1,
+    title: "nạp Gold",
+    url: "http://mobile.tracking.dautruong.info/img/banner/banner140916.jpg",
+    urllink: "",
+    pos:{
+        x:200,
+        y:100
+    }
+});
+smsg.save(function(err, logDoc) {
+    if (err) return console.error("smsg.save err: " + JSON.stringify(err));
+    console.log('+smsg');
+});
+return;
+
+
+// var options = {
+//     method: 'POST',
+//     url: 'https://onesignal.com/api/v1/notifications',
+//     headers: {
+//         'Content-Type': 'application/json',
+//         'Authorization': 'Basic NGMzODk0ODQtMzE0Ni00N2Y5LWE3YmMtZDU1MjVkZDQ5ZTUz'
+//     },
+//     json: {
+//         app_id: "0a8074bb-c0e4-48cc-8def-edd22ce17b9d",
+//         headings: { "en": "DST Notify" },
+//         included_segments: ["All"],
+//         contents: { "en": "App  Warning login failed rate - Test"},
+//         ios_badgeType: "Increase",
+//         ios_badgeCount: 1
+//     }
+// };
+// console.log("---> sendWarningMail");
+
+// function callback(error, response, body) {
+//     console.log("<--- sendWarningMail response");
+//     if (error) {
+//         console.log('error: ' + JSON.stringify(error));
+//     } else {
+//         console.log(body)
+//     }
+// }
+
+// request(options, callback);
 
 // sql.connect(mssqlconfig).then(function() {
 //     console.log('mssql connect ok');
@@ -90,10 +133,258 @@ request(options, callback);
 //     console.log(err);
 // });
 
-sql.on('error', function(err) {
-    // ... error handler
-    console.log(err)
+// sql.on('error', function(err) {
+//     // ... error handler
+//     console.log(err)
+// });
+
+
+FB.setAccessToken('EAAKKZC18yTRkBAMAHfDob9zifpeusoOoexpTaHiCBpj11JTp02zcrtsUyeM4lWtMDkbHQj4OqnIx0FYYOg3YgZByKQDcpWh4uPOemmDRf72QbdYvckG7LQlJuzLk71mke6JExdzhffU5bcXwjIasrLaCQZCCDEZD');
+// FB.api('me', function(res) {
+//     if (!res || res.error) {
+//         console.log(!res ? 'error occurred' : res.error);
+//         return;
+//     }
+//     console.log(res);
+//     FB.api('me/friends', function(res) {
+//         if (!res || res.error) {
+//             console.log(!res ? 'error occurred' : res.error);
+//             return;
+//         }
+//         console.log(res);
+//     });
+// });
+
+// FB.api('', 'post', {
+//     batch: [
+//         { method: 'get', relative_url: 'me' },
+//         { method: 'get', relative_url: 'me/friends?limit=200' }
+//     ]
+// }, function(res) {
+//     var res0, res1;
+
+//     if (!res || res.error) {
+//         console.log(!res ? 'error occurred' : res.error);
+//         return;
+//     }
+
+//     res0 = JSON.parse(res[0].body);
+//     res1 = JSON.parse(res[1].body);
+//     console.log(res0);
+//     console.log(res1);
+// });
+
+var user1 = {
+    operator: 500,
+    disid: "2974_500",
+    bundle: "com.danhbai.dautruong",
+    app_version: "2.14",
+    did: "0DE5C3F6-F316-43FE-8D5C-4B2CB42FDFC7",
+    device_OS: "iOS",
+    device_OS_version: "9.3.2",
+    scene_name: "GAME_VIEW",
+    loginTime: "2016-08-19 10:05:33",
+    username: "annguyenpro",
+    userid: 1100079258,
+    logged_in_game_host: "servergame14.club;",
+    gameid: 8004,
+    sceneStartedTime: "2016-08-19 10:08:32"
+}
+
+var user2 = {
+    operator: 500,
+    disid: "2974_500",
+    bundle: "com.danhbai.dautruong",
+    app_version: "2.14",
+    did: "0DE5C3F6-F316-43FE-8D5C-4B2CB42FDFC7",
+    device_OS: "iOS",
+    device_OS_version: "9.3.2",
+    scene_name: "GAME_VIEW",
+    loginTime: "2016-08-19 10:05:33",
+    username: "annguyenpro",
+    userid: 1100079258,
+    logged_in_game_host: "servergame14.club;",
+    gameid: 8004,
+    sceneStartedTime: "2016-08-19 10:08:32",
+    ac: "EAAKKZC18yTRkBAMAHfDob9zifpeusoOoexpTaHiCBpj11JTp02zcrtsUyeM4lWtMDkbHQj4OqnIx0FYYOg3YgZByKQDcpWh4uPOemmDRf72QbdYvckG7LQlJuzLk71mke6JExdzhffU5bcXwjIasrLaCQZCCDEZD"
+}
+
+console.log('server has started');
+
+function addOrUpdateUserToDB(iuser, callback) {
+    var appid = (iuser.operator == 1001 ? 1000 : iuser.operator);
+    MUser.findOne({ uid: iuser.userid, app: appid }).exec(function(err, ruser) {
+        callback(ruser);
+
+        if (err) {
+            console.log('err: ' + JSON.stringify(err));
+        } else if (!ruser) {
+            // console.log('ruser == null');
+            // thực hiện insert
+            var mUser = new MUser({
+                uid: iuser.userid,
+                app: appid,
+                name: iuser.username,
+                d1: new Date(),
+                d2: new Date(),
+                lDisid: iuser.disid,
+                lDev: iuser.did,
+                disid: [{ id: iuser.disid, la: new Date() }],
+                dev: [{ id: iuser.did, la: new Date() }]
+            });
+            mUser.save(function(err, doc) {
+                if (err) return console.error(err);
+                // console.log('+muser ' + doc.name);
+            });
+        } else {
+            // console.log('ruser: ' + JSON.stringify(ruser));            
+            // thực hiện update
+            var disid = ruser.disid;
+            var dev = ruser.dev;
+
+            for (var i = disid.length - 1; i >= 0; i--) {
+                if (disid[i].id == iuser.disid) {
+                    disid[i].la = new Date();
+                    break;
+                }
+            };
+            for (var i = dev.length - 1; i >= 0; i--) {
+                if (dev[i].id == iuser.did) {
+                    dev[i].la = new Date();
+                    break;
+                }
+            };
+            MUser.findOneAndUpdate({ _id: ruser._id }, {
+                $set: {
+                    d2: new Date(),
+                    lDisid: iuser.disid,
+                    lDev: iuser.did,
+                    disid: disid,
+                    dev: dev
+                }
+            }, { new: true }, function(err, doc) {
+                if (err) {
+                    console.log("Something wrong when updating data!");
+                }
+                // console.log(doc);
+            });
+        }
+    });
+}
+
+function getFBExtraData(FB, iuser, callback) {
+    var appid = (iuser.operator == 1001 ? 1000 : iuser.operator);
+    if (!iuser['ac']) {
+        console.log('user does not have access token');
+        return;
+    }
+
+    // cập nhật lại thông tin từ FB sau 1 ngày
+    var yesterday = moment().add(-1, 'days');
+    if (!iuser.lastUpdateFB || moment(iuser.lastUpdateFB).isBefore(yesterday)) {
+        FB.setAccessToken(iuser.ac);
+
+        FB.api('', 'post', {
+            batch: [
+                { method: 'get', relative_url: 'me' },
+                { method: 'get', relative_url: 'me/friends?limit=200' }
+            ]
+        }, function(res) {
+            var res0, res1;
+
+            if (!res || res.error) {
+                console.log(!res ? 'error occurred' : res.error);
+                callback(null, null);
+                return;
+            }
+
+            res0 = JSON.parse(res[0].body);
+            res1 = JSON.parse(res[1].body);
+            // res0 = {
+            //     id: '974492469236118',
+            //     email: 'nguyenhaian@outlook.com',
+            //     first_name: 'An',
+            //     gender: 'male',
+            //     last_name: 'Nguyễn',
+            //     link: 'https://www.facebook.com/app_scoped_user_id/974492469236118/',
+            //     locale: 'en_US',
+            //     name: 'An Nguyễn',
+            //     quotes: 'Chưa thích câu nào cả.',
+            //     timezone: 7,
+            //     updated_time: '2016-01-30T17:29:44+0000',
+            //     verified: true
+            // }
+
+            // res1 = {
+            //     data: [{ name: 'Anh Tuấn', id: '10153217538279830' },
+            //         { name: 'Nguyen Duc Viet', id: '10153406034664184' },
+            //         { name: 'Chien Eric', id: '10206074069586758' },
+            //         { name: 'Nguyen Trung Hieu', id: '10204365501593804' },
+            //         { name: 'Nguyễn Sơn Tùng', id: '10205084397049338' },
+            //         { name: 'Thanh Phuong', id: '10204946235121768' },
+            //         { name: 'Linh Nguyen Duc', id: '10202737658361890' },
+            //         { name: 'Hoàn Ộp', id: '10201920552975202' },
+            //         { name: 'Hai Phan', id: '1285937068087792' },
+            //         { name: 'Đạt Lex', id: '1198844253464750' },
+            //         { name: 'Ho Hai Phuc', id: '1192327600784286' },
+            //         { name: 'Sen Nguyen', id: '1031104880250669' },
+            //         { name: 'Hieu Nguyen Trung', id: '1038681489497079' },
+            //         { name: 'Độ Carrot', id: '1000936379940467' },
+            //         { name: 'Hà Nhím', id: '977908178922460' },
+            //         { name: 'Củ Sắn DÂy', id: '905531396161027' },
+            //         { name: 'Đào Đình Giang', id: '866668070048820' },
+            //         { name: 'Coi Tho', id: '829274250460418' },
+            //         { name: 'Người Toàn Xương', id: '886490091408527' },
+            //         { name: 'Nguyễn Trường Thăng', id: '1030267837032067' },
+            //         { name: 'Tuấn Trương', id: '948613005201513' },
+            //         { name: 'Ami Nguyễn', id: '832545780145358' },
+            //         { name: 'Khuất Thùy Linh', id: '827864553947510' },
+            //         { name: 'Thang Le', id: '901886533213739' },
+            //         { name: 'Nguyễn Lâm', id: '924824074253638' }
+            //     ],
+            //     paging: {
+            //         cursors: {
+            //             before: 'QVFIUldXc2NHNnZALa05XZAS1nYlhsbG9iLUJnZAmhRakQzN2NPQnNXcTUtd2VSUmpVTUhhOUExeWFxbFVoQ2xtTU9USUwZD',
+            //             after: 'QVFIUkJVNW0zeGhHa2pqZATNRbmhWWmRPemI5ZAWJLNEhrdlkybGpZAZAkZAHVjdFelFILTZAkQi10dW9zYUhZAQjBfYzI2SGsyVFEyc1hsWnJfNWZAXTXdpUHFJX0Vn'
+            //         },
+            //         next: 'https://graph.facebook.com/v2.2/974492469236118/friends?access_token=EAAKKZC18yTRkBAE6mhch9UYSWUUG7rsMgKr18ZCIRVAIgyBgQeis9X8uZASBA929zNZAXydERl9O4Mf5wPWmWWxb62ZAlcrSDjFM40SSiA20XqFnlGxZC2EFNrtT22TM8oMTu9bB0Pv4SqZAzEFbZC3DpdIQg44i9b8ZD&limit=25&after=QVFIUkJVNW0zeGhHa2pqZATNRbmhWWmRPemI5ZAWJLNEhrdlkybGpZAZAkZAHVjdFelFILTZAkQi10dW9zYUhZAQjBfYzI2SGsyVFEyc1hsWnJfNWZAXTXdpUHFJX0Vn'
+            //     },
+            //     summary: { total_count: 405 }
+            // }
+
+            MUser.findOneAndUpdate({ uid: iuser.userid, app: appid }, {
+                $set: {
+                    lastUpdateFB: new Date(),
+                    fbName: res0.name,
+                    fbID: res0.id,
+                    email: res0.email,
+                    fFB: res1.data
+                }
+            }, { new: true }, function(err, doc) {
+                if (err) {
+                    console.log("Something wrong when updating data!");
+                }
+                // console.log(doc);
+            });
+
+            callback(res0, res1);
+        });
+    }
+}
+
+addOrUpdateUserToDB(user1, function(ruser) {
+    if (ruser)
+        console.log(JSON.stringify(ruser));
+
 });
+
+getFBExtraData(FB, user2, function(res0, res1) {
+    if (res0)
+        console.log(JSON.stringify(res0));
+    if (res1)
+        console.log(JSON.stringify(res1));
+});
+
 
 return;
 /*************************************************************/

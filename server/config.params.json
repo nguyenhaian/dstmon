@@ -1,0 +1,41 @@
+{
+    "maillist": [{
+        "name": "An Nguyen",
+        "email": "nguyenhaian1412@gmail.com"
+    }, {
+        "name": "Hoan LV",
+        "email": "hoanlv1989@gmail.com"
+    }, {
+        "name": "Nguyen Trung Hieu",
+        "email": "nthieu@athena.vn"
+    }, {
+        "name": "Nguyen Duc Viet",
+        "email": "vietnd@athena.vn"
+    }, {
+        "name": "Ho Hai Phuc",
+        "email": "Haplavn@gmail.com"
+    }, {
+        "name": "Vu Manh Duy",
+        "email": "duyvumanh@gmail.com"
+    }],
+    "maillist2": [{
+        "name": "An Nguyen",
+        "email": "nguyenhaian1412@gmail.com"
+    }],
+    "threshold": {
+        "lastccus": 19,
+        "percentloginfailed": 0.45,
+        "loginSuccessMin": 100,
+        "percentccudownrate": 0.25,
+        "minavgccu1": 12,
+        "minavgccu2": 40,
+        "raiseRate": 2.5,
+        "minDurationSentNotify": 180
+    },
+    "domains": {
+        "servergame14.club": "203.162.166.14",
+        "servergame104.club": "203.162.166.46",
+        "servergame003.club": "203.162.166.104"
+    },
+    "sdisid": [2873, 2923]
+}

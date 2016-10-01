@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+table {
+    font-family: arial, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+td, th {
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 8px;
+}
+
+tr:nth-child(even) {
+    background-color: #dddddd;
+}
+</style>
+</head>
+<body>
+<table>
+	<tr>
+    	<th>Date</th>
+    	<th>Ope</th>
+    	<th>OS</th>
+    	<th>username/pkgname</th>
+    	<th>response time</th>
+    	<th>host</th>
+    	<th>gameid</th>
+    	<th>err</th>
+    	<th>errmsg</th>
+    </tr>
+	<% data.forEach(function(item) { %>
+    <tr>
+    	<td><%= moment(item.time).format('DD/MM, HH:mm:ss') %></td>
+    	<td><%= item.app %></td>
+    	<td><%= item.os %></td>
+    	<td><%= item.username %><br><%= item.bundle %></td>
+    	<td><%= item.d %></td>
+    	<td><%= item.host %></td>
+    	<td><%= item.gameid %></td>
+    	<td><%= item.errorcode %></td>
+    	<td><%= item.errormsg %></td>
+    </tr>
+    <% }); %>
+<table>
+
+</body>
+</html>

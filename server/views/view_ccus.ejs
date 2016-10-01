@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+table {
+    font-family: arial, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+td, th {
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 8px;
+}
+
+tr:nth-child(even) {
+    background-color: #dddddd;
+}
+</style>
+</head>
+<body>
+<!-- {
+    date: new Date(),
+    app: c_ccus_byapp,
+    ip: ccus_byip,
+    game: c_ccus_bygame,
+    distribution: c_ccus_bydisid
+} -->
+<div>date: <%= moment(date).format('DD/MM, HH:mm:ss') %></div>
+<div><b>app:</b>
+    <% Object.keys(app).forEach(function(key) { %>
+    <div><%= key %>: <%= app[key] %></div>
+    <% }); %>
+</div>
+<div><b>ip:</b>
+    <% Object.keys(ip).forEach(function(key) { %>
+    <div><%= key %>: <%= ip[key] %></div>
+    <% }); %>
+</div>
+<div><b>game:</b>
+    <% Object.keys(game).forEach(function(key) { %>
+    <div><%= key %>: <%= game[key] %></div>
+    <% }); %>
+</div>
+<div><b>distribution:</b>
+    <% Object.keys(distribution).forEach(function(key) { %>
+    <div><%= key %>: <%= distribution[key] %></div>
+    <% }); %>
+</div>
+</body>
+</html>
