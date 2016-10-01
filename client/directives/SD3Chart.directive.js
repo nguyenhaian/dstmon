@@ -4,7 +4,7 @@
     // TODO: 2. enable sample taking duration
 
     angular.module('chartApp')
-        .directive('sd3Chart', ['socket', function(socket) {
+        .directive('sd3Chart', ['socket', '$timeout', function(socket, $timeout) {
             // var annguyen = 'nguyenhaian';
             return {
                 // require: ['^^CMonController'],
@@ -19,7 +19,7 @@
                 },
 
                 templateUrl: 'views/templates/schart.html',
-                link: function($scope, $element, $attrs) {
+                link: function($scope, element, attrs) {
                     // show only time slider
                     console.log('init sd3Chart link');
                     // rawdata and viewoptions variables
@@ -85,7 +85,7 @@
 
                         line = d3.svg.line()
                             // .interpolate("basis")
-                            .interpolate("cardinal") // monoton
+                            // .interpolate("monoton") // monoton, cardinal, basis
                             .defined(function(d) {
                                 // console.log(d); 
                                 return !isNaN(d.user_count);
@@ -99,6 +99,12 @@
                         // .defined(function(d) { return d.y!=null; });
 
                         container = document.querySelector($scope.elementid);
+
+                        // đoạn này cho vào controller sẽ lỗi, cho vào link() thì ok
+                        if ($scope.type == 'ccu') {
+                            var cfchart = angular.element(`<div id="${$scope.svgid+'_cfchart'}"></div>`);
+                            element.prepend(cfchart);
+                        }
 
                         $('.rg-range-picker').css({ "max-width": width });
                     }
@@ -376,8 +382,25 @@
 
                         var data = prepareData(updateDateRangeViewAngle);
 
-                        cf = crossfilter(data);
-
+                        if ($scope.type == 'ccu') {
+                            var cfchart = dc.lineChart($scope.svgid + '_cfchart');
+                            // {"5000":196,"date":"2016-07-01T08:18:54.000Z","ccu":196,"iOS":180,"com_studiogameviet_3csamloc":180,"Android":16,"gamebai2016doithuong_danhbaionline3c_choibaitienlenxocdia":1,"com_studiogameviet_tienlen3c":7,"langvui_storegamebai_hotgame":6,"com_my3c_gamebaidoithuong":1,"vn_danhbai_doithuong_moinhathn17":1}
+                            cf = crossfilter(data);
+                            var dateDim = cf.dimension(d => d.date);
+                            var hits = dateDim.group().reduceSum(d => d.ccu);
+                            var minDate = dateDim.bottom(1)[0].date;
+                            var maxDate = dateDim.top(1)[0].date;
+                            // console.log(hits.top(4))
+                            cfchart
+                                .width(500).height(200)
+                                .dimension(dateDim)
+                                .group(hits)
+                                .x(d3.time.scale().domain([minDate, maxDate]))
+                                .yAxisLabel("Hits per day");
+                            $timeout(function() {
+                                // dc.renderAll();
+                            }, 0);
+                        }
                         // The main draw SVG
                         // note: tạm thời ko cần draw lúc này, chỉ cần prepareData là đủ.
                         // vì datepicker sẽ chạy và gọi hàm updateView
@@ -485,7 +508,7 @@
                                 // x.####
 
                                 var dataindex = Math.round(relPos * (d.values.length - 1));
-                                if (i == 0) {
+                                if (d.values[dataindex].date) { // i == 0
                                     dateToShow = moment(d.values[dataindex].date)._d; // chỉ lấy 1 lần, vì bị lặp lại theo số lines.
                                 }
                                 if (d.name.startsWith('y_')) {

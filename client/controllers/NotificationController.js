@@ -29,7 +29,9 @@
                 members: [
                     { name: 'Đấu Trường Unity (& Android)', appid: '05052740-e9a0-11e4-9294-7f1cdb478da5', key: 'MDUwNTI3ZDYtZTlhMC0xMWU0LTkyOTUtNGI2ZDI0NDUzMDcy' },
                     { name: 'Đấu Trường Tiến Lên', appid: '7b7b28de-9db4-4752-800c-9034d4ea79d4', key: 'ZjY0YjhjMzEtNjAyMC00OGRkLWFmNTQtOWQ4OWNlMzdkOTA4' },
-                    { name: 'Đấu Trường 2016', appid: 'b1b029c9-81c1-4c78-a80f-091547041204', key: 'NDBmMmRhYzMtNTFhYy00OGI4LTllY2YtYzllNGVkNWMxZjVl' }
+                    { name: 'Đấu Trường iOS new', appid: 'abfbab6c-ec9c-44d7-88b9-973c8088c20c', key: 'ZmZkODQ4MDEtN2IzYS00NjljLTk0ZjEtYTNjOWY2MzJjNDY2' },
+                    { name: 'Đấu Trường 2016', appid: 'b1b029c9-81c1-4c78-a80f-091547041204', key: 'NDBmMmRhYzMtNTFhYy00OGI4LTllY2YtYzllNGVkNWMxZjVl' },
+                    { name: 'Xanh 9', appid: '78398b12-0ba0-4879-8ab7-7b7ef6a3aa67', key: 'ZDBhMjRiYTktMWI4Zi00MzhkLTlmMGMtMzA5NGZmYWExYmUz' }
                 ]
             }, {
                 groupname: 'Group Siam Play',
@@ -37,7 +39,7 @@
                     { name: 'Siam Unity', appid: '4f1d9f21-2646-42aa-807a-d13bacc41c56', key: 'ZjdjOTIwNjctZDFjMS00NTMwLTgxZTUtMmNhM2Q4MDIyYTRj' },
                     { name: 'Siam Hilo', appid: 'e44e3328-2666-44b5-8d95-383b4aacfe8b', key: 'ODE0Y2Q1YzItMzE5NS00MmU5LWE5YjMtZGYzMzA4NGEwNTYz' },
                     { name: 'Siam Dummy (& Android)', appid: '60c4f721-75c6-4f10-b736-3ff480038f61', key: 'Y2IyZDViNTEtMjY3NC00OWU5LTk4ZTQtZDRmZjg3YmE1MzIy' },
-                    { name: 'Siam 9K', appid: '3c76eabc-4bdb-44bc-8673-b61e816b6396', key: 'ZTk1OGY5YjEtOTBjNS00OWRjLWE3ZDUtOTUwZGY5ZDNkNThl' }
+                    { name: 'Siam 9K', appid: 'be0add25-0d69-4565-9bac-df36c6dc73be', key: 'MjdhODM0Y2UtMWE1YS00MDhiLWIxYzctYWVkOTI0MzNmMzhh' }
                 ]
             }, {
                 groupname: 'Group UWin',
@@ -120,7 +122,7 @@
                 }
                 // console.log("singleTarget: " + JSON.stringify(singleTarget));
                 // $scope.sendOnesignal(singleTarget.name, singleTarget.title, singleTarget.message, 1);
-
+            console.log('----> post '+ JSON.stringify(campaign));
             $http.post('/notify', campaign, {}).then(function successCallBack(response) {
                 console.log(" <---- response data: " + JSON.stringify(response));
                 // TODO: xử lý in ra logs
@@ -130,6 +132,7 @@
         }
 
         $scope.updatePendingMessage = function() {
+                console.log(" ----> getPendingMessage data: " + JSON.stringify({ target: $scope.target.selectedGroup }));
                 $http.post('/getPendingMessage', { target: $scope.target.selectedGroup }, {}).then(function successCallBack(response) {
                     if (response.data.err) {
                         console.log(" <---- response data err: " + JSON.stringify(response.data.err));
@@ -183,10 +186,10 @@
             }, function errorCallback(error) {
                 console.log(error);
             });
-        }     
+        }
 
         $scope.loadSentMsgByCampaign = function(campaignid) {
-            $http.get('/loadSentMsgByCampaign/'+campaignid, {}).then(function successCallBack(response) {
+            $http.get('/loadSentMsgByCampaign/' + campaignid, {}).then(function successCallBack(response) {
                 if (response.data.err) {
                     console.log(" <---- response data err: " + JSON.stringify(response.data.err));
                     return;
@@ -202,7 +205,7 @@
             }, function errorCallback(error) {
                 console.log(error);
             });
-        }      
+        }
 
         $scope.loadLastSentMsg();
         $scope.loadLastSentCampaigns();

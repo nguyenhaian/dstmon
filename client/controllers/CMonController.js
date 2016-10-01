@@ -22,7 +22,7 @@
         //******************************************************
         $scope.sd3Charts = [];
         $scope.datasource = {
-            selectedOpe: { '5000': true, '500': false, '5200': false, '1000': false, '6000': false },
+            selectedOpe: { '5000': true, '500': true, '5200': true, '1000': true, '6000': false },
             selectedOs: { 'iOS': true, 'Android': true },
             selectedBundle: '',
             selectedDate: new Date(),
