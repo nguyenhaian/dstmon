@@ -55,7 +55,7 @@
                 // socket.emit("tk.loginData", option); // tk: tracker
                 $http.post('/loginData', option, {}).then(function successCallBack(response) {
                     if (response.data.error != null) {
-                        alert(response.data.error)
+                        alert('loginData ' + JSON.stringify(response.data.error));
                     }
 
                     var jsondata = response.data.loginData;
@@ -69,6 +69,33 @@
                 }, function errorCallback(error) {
                     console.log(getTimeStamp() + " <---- response loginData error: " + error);
                     $rootScope.$broadcast('tld.response', {
+                        status: 'error',
+                        error: error,
+                        duration: duration
+                    });
+                });
+                startLoadingTime = moment();
+            }
+
+            function getGrettingPopup(option, onSuccess) {
+                console.log(getTimeStamp() + " ----> request GrettingPopup data: " + JSON.stringify(option));
+                // socket.emit("tk.loginData", option); // tk: tracker
+                $http.post('/getGP', option, {}).then(function successCallBack(response) {
+                    if (response.data.error != null) {
+                        alert('GrettingPopup data ' + JSON.stringify(response.data.error));
+                    }
+
+                    var jsondata = response.data;
+                    console.log(getTimeStamp() + " <---- response GrettingPopup data");
+                    var duration = moment.duration(moment().diff(startLoadingTime)).asSeconds();
+                    $rootScope.$broadcast('response', {
+                        status: 'done',
+                        duration: duration
+                    });
+                    onSuccess(jsondata);
+                }, function errorCallback(error) {
+                    console.log(getTimeStamp() + " <---- response GrettingPopup error: " + error);
+                    $rootScope.$broadcast('response', {
                         status: 'error',
                         error: error,
                         duration: duration
@@ -138,7 +165,7 @@
                         }
                         var jsondata = response.data.data;
                         console.log(getTimeStamp() + " <---- response dist data: " + _.size(jsondata));
-                        onSuccess(jsondata);                        
+                        onSuccess(jsondata);
                     }, function errorCallback(error) {
                         console.log(error);
                     });
@@ -160,7 +187,8 @@
                 //     });
                 // },
                 timelineData: timelineData,
-                loginData: loginData
+                loginData: loginData,
+                getGrettingPopup: getGrettingPopup
             };
         }]);
 })();

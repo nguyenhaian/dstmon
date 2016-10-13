@@ -10,6 +10,8 @@ var mongoose = require('mongoose')
 var path = require('path');
 var sql = require('mssql');
 var request = require('request');
+var async = require("async");
+var json2csv = require('json2csv');
 
 var onesignal = {
     groups: [{
@@ -184,12 +186,13 @@ var PaymentFailed = mongoose.model('PaymentFailed', { time: Date, app: String, b
 var SendSMS = mongoose.model('SendSMS', { time: Date, app: String, bundle: String, os: String, add: String });
 
 var SiamAction = mongoose.model('SiamAction', { date: Date, clicksuggestdummy: Number, showsuggestdummy: Number, timeleftdummy: {}, timeplaydummy: {} });
+var CCU = mongoose.model('CCU', { date: Date, app: {}, ip: {} });
 // {
 //     "type": 1,
 //     "title": "nạp gold",
 //     "url": "http://mobile.tracking.dautruong.info/img/banner/banner140916.jpg"
 // }
-var SMessage = mongoose.model('SMessage', { date: Date, type: Number, title: String, url: String, urllink: String, pos: { x: Number, y: Number } });
+var SMessage = mongoose.model('SMessage', { app: String, date: Date, type: Number, title: String, url: String, urllink: String, pos: { x: Number, y: Number } });
 
 // init data when server startup
 /*************************************************************/
@@ -356,6 +359,38 @@ function dbgetLoginData(option, onSuccess, onFailed) {
             });
 
     }
+}
+
+function dbgetGrettingPopup(option, onSuccess, onFailed) {
+    // trả về 3 list
+    // 1. valid, 2. valid in future, 3. invalid
+    var valid = [],
+        valid_in_future = [],
+        invalid = [];
+
+    var _now = new Date();
+
+    var getGPAsycn = {
+        query: function(querystring, callback) {
+            SMessage.find(querystring)
+                .limit(20)
+                .exec(function(err, docs) {
+                    callback(err, docs);
+                });
+        }
+    };
+
+    var query1 = { app: option.app, date: { $lt: _now }, dexp: { $gt: _now } };
+    var query2 = { app: option.app, date: { $gt: _now }, dexp: { $gt: _now } };
+    var query3 = { app: option.app, date: { $lt: _now }, dexp: { $lt: _now } };
+
+    async.map([query1, query2, query3], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
+        if (err) {
+            onFailed(err);
+        } else {
+            onSuccess(result);
+        }
+    });
 }
 
 function dbgetLoadConfigActionData(option, onSuccess, onFailed) {
@@ -828,6 +863,7 @@ app.get('/timelineData', function(req, res) {
 });
 
 app.get('/performancereport', function(req, res) {
+    var limit = +24 * 60 * 2; // dữ liệu trong 12h
     var options = {
         method: 'GET',
         url: 'http://203.162.121.174:3000/ccus',
@@ -835,25 +871,34 @@ app.get('/performancereport', function(req, res) {
             'Content-Type': 'application/json'
         }
     };
-    // console.log("options.json: " + JSON.stringify(options.json));
 
-    function callback(error, response, body) {
-        // TODO
-        if (error) {
-            res.json({ err: error })
-            return;
+    async.parallel({
+        tsv: function(callback) {
+            dbgetCCU(limit, function onSuccess(tsv) {
+                tsv = JSON.stringify(tsv);
+                tsv = tsv.replace(/\"/g, "");
+                callback(null, tsv);
+            }, function onFailed(err) {
+                callback(err, null);
+            });
+        },
+        rccu: function(callback) {
+            request(options, function(error, response, body) {
+                var ccus = JSON.stringify(JSON.parse(body), null, 3);
+                callback(error, ccus);
+            });
         }
-        res.setHeader('Content-Type', 'application/json');
-        res.send(JSON.stringify(JSON.parse(body), null, 3));
+    }, function(err, results) {
+        if (err)
+            res.json({ err: err });
+        else
+            res.render('view_d3graph', {
+                tsvdata: results.tsv,
+                rccu: results.rccu
+            });
+    });
 
-        // res.render('view_performance', {
-        //     data: JSON.parse(body)
-        // });
 
-        // res.send(JSON.stringify({ a: 1 }, null, 3));
-    }
-
-    request(options, callback);
 });
 
 
@@ -894,6 +939,80 @@ app.post('/loginData', function(req, res) {
         function onFailed(error) {
             // socket.emit('tld.response.error', error);
             res.json({ loginData: [], error: error });
+        });
+});
+
+function dbgetCCU(limit, onSuccess, onFailed) {
+    CCU.find({})
+        .sort({ _id: -1 })
+        .limit(limit)
+        .lean().exec(function(err, docs) {
+            if (err) onFailed(err);
+            else {
+                if (docs.length > 400) {
+                    var n = Math.round(docs.length / 400);
+                    if (n > 1) {
+                        docs = docs.filter(function(value, index) {
+                            return index%n == 0;
+                        });
+                    }
+                }
+
+                var doc = docs[docs.length - 1];
+                var keys_app = Object.keys(doc.app);
+                keys_app = keys_app.map(function(obj) {
+                    return "app." + obj;
+                });
+                var keys_ip = Object.keys(doc.ip);
+                keys_ip = keys_ip.map(function(obj) {
+                    return "ip." + obj;
+                });
+                var fields = keys_app.concat(keys_ip);
+                fields.unshift('date');
+
+                for (var i = docs.length - 1; i >= 0; i--) {
+                    docs[i].date = moment(docs[i].date).format("YY-MM-DDHH:mm:ss");
+                };
+
+                var tsv = json2csv({ data: docs, fields: fields, del: '\t' });
+                tsv = tsv.replace(/\"/g, "");
+
+                onSuccess(tsv);
+            }
+        });
+}
+
+app.get('/ccutsv/:limit', function(req, res) {
+    var limit = +req.params.limit; // thêm dấu + để cast string to int
+    dbgetCCU(limit, function onSuccess(tsv) {
+        res.writeHead(200, { "Content-Type": "text/tsv", "Content-Disposition": "inline; filename=data.tsv" });
+        res.end(tsv);
+    }, function onFailed(err) {
+        res.json({ err: err });
+    });
+});
+
+app.post('/ccujson', function(req, res) {
+    var option = req.body;
+    CCU.find({})
+        .sort({ _id: -1 })
+        .limit(30)
+        .exec(function(err, docs) {
+            if (err) res.json({ err: err });
+            else
+                res.json(docs);
+        });
+});
+app.post('/getGP', function(req, res) {
+    // console.log(JSON.stringify(req.body));
+    var option = req.body;
+    dbgetGrettingPopup(option,
+        function onSuccess(gp) {
+            res.json({ app: option.app, valid: gp[0], valid_in_future: gp[1], invalid: gp[2] });
+        },
+        function onFailed(error) {
+            // socket.emit('tld.response.error', error);
+            res.json({ error: error });
         });
 });
 

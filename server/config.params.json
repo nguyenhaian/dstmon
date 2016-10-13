@@ -33,9 +33,36 @@
         "minDurationSentNotify": 180
     },
     "domains": {
-        "servergame14.club": "203.162.166.14",
-        "servergame104.club": "203.162.166.46",
-        "servergame003.club": "203.162.166.104"
+        "servergame14_club": "203_162_166_14",
+        "servergame104_club": "203_162_166_46",
+        "servergame003_club": "203_162_166_104"
+    },
+    "gamesbyid": {
+        "8002": "BACAY",
+        "8003": "XITO",
+        "8004": "BINH",
+        "8005": "TIENLEN",
+        "8006": "TALA",
+        "8007": "CHAN",
+        "8008": "POKER",
+        "8009": "CARO",
+        "8010": "LIENG",
+        "8011": "GATE",
+        "8012": "SAM",
+        "8013": "XOCDIA",
+        "8006": "PHOM",
+        "8801": "LUCKYCARD",
+        "8802": "AUCTION",
+        "9006": "ROULETTE",
+        "8020": "POKER9K",
+        "8021": "DUMMY",
+        "8022": "HILO",
+        "8023": "POKDENG",
+        "8024": "DUMMY_FAST",
+        "8014": "PAYPOCK",
+        "8015": "CUOIKHUN",
+        "8026": "NEWPOKER",
+        "8025": "POKER9K"
     },
     "sdisid": [2873, 2923]
 }

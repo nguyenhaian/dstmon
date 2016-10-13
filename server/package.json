@@ -4,18 +4,21 @@
   "description": "the view of customers in game",
   "main": "server.js",
   "dependencies": {
+    "async": "^2.0.1",
     "body-parser": "^1.15.0",
     "compression": "^1.6.1",
     "ejs": "^2.4.1",
     "express": "^4.13.4",
     "ioredis": "^2.0.0",
+    "json2csv": "^3.7.0",
     "lodash": "^4.11.2",
     "moment": "^2.13.0",
     "mongoose": "^4.4.16",
     "mssql": "^3.1.2",
     "request": "^2.72.0",
     "socket.io": "^1.4.5",
-    "socket.io-redis": "^1.0.0"
+    "socket.io-redis": "^1.0.0",
+    "utf8": "^2.1.1"
   },
   "devDependencies": {},
   "scripts": {

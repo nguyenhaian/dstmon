@@ -96,3 +96,28 @@ table tr:nth-child(even) {
 .input-group-addon {
     width: 80px;
 }
+
+
+/*gretting Popup*/
+
+.gbutton {
+    position: relative;
+    right: 0;
+    bottom: 0;
+}
+
+
+/*.table {
+    border: 1px solid red;
+    display:table;
+    table-layout:fixed;
+    width:100%;
+}
+.cell {
+    border: 1px solid blue;
+    overflow: auto;
+    display:table-cell;
+}
+.row {
+    display:table-row;
+}*/

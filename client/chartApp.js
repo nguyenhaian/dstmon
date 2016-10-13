@@ -21,6 +21,11 @@ app.config(function($stateProvider, $urlRouterProvider) {
             templateUrl: "views/home.notifier.html",
             controller: "NotificationController"
         })
+        .state('home.grettingPopup', {
+            url: "/grettingPopup",
+            templateUrl: "views/home.gpopup.html",
+            controller: "GPopupController"
+        })
         .state('login', {
             url: "/login",
             templateUrl: "views/login.html"

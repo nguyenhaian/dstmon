@@ -40,11 +40,15 @@ mongoose.connect('mongodb://localhost/CustomerMonitor');
 
 var MUser = mongoose.model('User', {
     uid: Number,
-    app: Number,
+    app: String,
+    operator: Number,
     email: String,
     name: String, // không biết có nên thêm vip và gold vào ko
+    vip: Number,
+    gold: Number,
+    lq: Number,
     fbName: String,
-    fbID: Number,
+    fbID: String,
     d1: Date,
     d2: Date,
     disid: [], // list disid mà user đã active
@@ -52,27 +56,59 @@ var MUser = mongoose.model('User', {
     lDisid: String, // disid cuối cùng user active
     lDev: String, // Device cuối cùng mà user active
     fFB: [], // danh sách nhanh các bạn từ fFB cũng chơi game, limit 200 bạn
+    fFBSize: Number, // để truy vấn nhanh
     // ban đầu fG bao gồm fFB, fG: [{fbid:Number}]
     // sau đó sẽ đc cập nhật thành, fG: [{fbid:Number, uid:Number, name:String, }]
-    lastUpdateFB: Date
+    lastUpdateFB: Date,
+    lastSentNotify: Date,
+    // sMsg: [{ mid: String, beh: Number, date: Date }], // danh sách system message -> ko cần thiết lắm
+    // beh:0 - đã gửi, 1 - in, 2 - out
+    // date: ngày user có tương tác, dexp: ngày mà msg hết hiệu lực, nên xóa trong mảng này đi
+    cp: [{ pid: String, gid: Number, n: String, c: Number, d: Date }], // danh sách player hay choi cùng, Ghi vào Db lúc user thoát
+    // gid: gameid, n:name, c: count, d: last date phát sinh ván chơi cùng
+    fl: [{ pid: String, gid: Number, n: String, d: Date }] // follow list
+        // đối với biến user,
+        // player đc chọn sẽ đưa vào follow list.
+        // d: ngày kết bạn
 });
 
-var SMessage = mongoose.model('SMessage', { date: Date, type: Number, title: String, url: String, urllink: String, pos: { x: Number, y: Number } });
-var smsg = new SMessage({
-    date: new Date(),
-    type: 1,
-    title: "nạp Gold",
-    url: "http://mobile.tracking.dautruong.info/img/banner/banner140916.jpg",
-    urllink: "",
-    pos:{
-        x:200,
-        y:100
+var data = {
+    d2: new Date()
+}
+data.gold = 2;
+data.vip = 1;
+data.lq = 0;
+
+MUser.findOneAndUpdate({ _id: "57f75b7ae153ba08525b6aec" }, {
+    $set: data
+}, { new: true }, function(err, doc) {
+    if (err) {
+        console.log("Something wrong when updating mUser! ");
+        console.log(err);
+    } else {
+        console.log("update done");
     }
+    // console.log(doc);
 });
-smsg.save(function(err, logDoc) {
-    if (err) return console.error("smsg.save err: " + JSON.stringify(err));
-    console.log('+smsg');
-});
+
+// var SMessage = mongoose.model('SMessage', { date: Date, type: Number, title: String, url: String, urllink: String, pos: { x: Number, y: Number } });
+// var smsg = new SMessage({
+//     date: new Date(),
+//     type: 1,
+//     title: "nạp Gold",
+//     url: "http://mobile.tracking.dautruong.info/img/banner/banner140916.jpg",
+//     urllink: "",
+//     pos:{
+//         x:200,
+//         y:100
+//     }
+// });
+// smsg.save(function(err, logDoc) {
+//     if (err) return console.error("smsg.save err: " + JSON.stringify(err));
+//     console.log('+smsg');
+// });
+
+
 return;
 
 
