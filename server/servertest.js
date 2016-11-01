@@ -10,6 +10,7 @@ var moment = require('moment')
 var mongoose = require('mongoose')
 var sql = require('mssql')
 var request = require('request');
+var async = require("async");
 
 var FB = require('fb');
 FB.options({ version: 'v2.7' });
@@ -37,6 +38,52 @@ var campaign = {
 }
 
 mongoose.connect('mongodb://localhost/CustomerMonitor');
+
+var GreetingPopup = mongoose.model('GreetingPopup', {
+    type: Number,
+    title: String,
+    LQ: [Number],
+    Vip: [Number],
+    AG: [Number],
+    date: Date,
+    dexp: Date,
+    app: String,
+    url: String,
+    urllink: String,
+    countBtn: Number,
+    valueSms: Number,
+    valueCard: Number,
+    valueIAP: Number,
+    bonusSms: Number,
+    bonusCard: Number,
+    bonusIAP: Number,
+    showPopup: Boolean,
+    arrUrlBtn: [String],
+    arrPos: [{ Number, Number }],
+    result: {},
+    clickButtonBanner: Number,
+    closeBanner: Number,
+    clickButtonIAP: Number,
+    clickButtonSms: Number,
+    clickButtonCard: Number
+});
+
+var Type10Popup = mongoose.model('Type10Popup', {
+    type: Number,
+    title: String,
+    date: Date,
+    dexp: Date,
+    app: String,
+    url: String,
+    urllink: String,
+    countBtn: Number,
+    arrValue: [Number],
+    arrBonus: [Number],
+    arrUrlBtn: [String],
+    arrTypeBtn: [String],
+    arrPos: [{ Number, Number }],
+    result: {}
+});
 
 var MUser = mongoose.model('User', {
     uid: Number,
@@ -72,24 +119,171 @@ var MUser = mongoose.model('User', {
         // d: ngày kết bạn
 });
 
-var data = {
-    d2: new Date()
-}
-data.gold = 2;
-data.vip = 1;
-data.lq = 0;
 
-MUser.findOneAndUpdate({ _id: "57f75b7ae153ba08525b6aec" }, {
-    $set: data
-}, { new: true }, function(err, doc) {
-    if (err) {
-        console.log("Something wrong when updating mUser! ");
-        console.log(err);
-    } else {
-        console.log("update done");
+var data = {
+    "type": 10,
+    "title": "nap Gold",
+    "url": "http://203.162.166.19:5000/Siam/image/km200_5.png",
+    "urllink": "https://www.google.com.vn/",
+
+    "countBtn": 3,
+
+    "arrValue": [
+        0,
+        0,
+        3
+    ],
+
+    "arrBonus": [
+        0,
+        0,
+        0
+    ],
+    "date": new Date(),
+    "dexp": new Date(),
+
+    "arrUrlBtn": [
+        "http://203.162.166.19:5000/Siam/image/btn_sms.png",
+        "http://203.162.166.19:5000/Siam/image/btn_card.png",
+        "http://203.162.166.19:5000/Siam/image/btn_sms.png"
+    ],
+
+    "arrTypeBtn": [
+        "sms",
+        "card",
+        "sms"
+    ],
+
+    "arrPos": [{
+        "x": 0,
+        "y": -0.3
+    }, {
+        "x": -0.3,
+        "y": -0.3
+    }, {
+        "x": 0.3,
+        "y": -0.3
+    }]
+
+};
+
+
+// var popup = new Type10Popup(data);
+//        popup.save(function(err, logDoc) {
+//            if (err) return console.error(err);
+//            console.log('+popup');
+//        });
+
+function shuffle(array) {
+    var currentIndex = array.length,
+        temporaryValue, randomIndex;
+
+    // While there remain elements to shuffle...
+    while (0 !== currentIndex) {
+
+        // Pick a remaining element...
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex -= 1;
+
+        // And swap it with the current element.
+        temporaryValue = array[currentIndex];
+        array[currentIndex] = array[randomIndex];
+        array[randomIndex] = temporaryValue;
     }
-    // console.log(doc);
+
+    return array;
+}
+
+
+function test() {
+
+    var sMesData = [{
+        priority: 1,
+        x: 1,
+        y: 4
+    }, {
+        priority: 1,
+        x: 2,
+        y: 2
+    }, {
+        x: 8,
+        y: 4
+    }, {
+        x: 9,
+        y: 4
+    }, {
+        priority: 6,
+        x: 0,
+        y: 4
+    }];
+
+
+    sMesData = shuffle(sMesData);
+
+    function uniqBy(a, key) {
+        var seen = {};
+        return a.filter(function(item) {
+            var k = key(item);
+            return seen.hasOwnProperty(k) ? false : (seen[k] = true);
+        })
+    }
+
+    sMesData = uniqBy(sMesData, function(item) {
+        return item.priority;
+    });
+
+    sMesData.sort(function(a, b) {
+        // if (!_.has(a, 'priority'))
+        //     a.priority = 1000;
+        // if (!_.has(b, 'priority'))
+        //     b.priority = 1000;
+        return a.priority - b.priority;
+    });
+
+    console.log(sMesData);
+}
+
+for (var i = 5 - 1; i >= 0; i--) {
+    console.log("test " + i);
+    test();
+};
+
+return;
+var updateGPAsycn = {
+    query: function(item, callback) { // fbkey: feedbackkey
+        // item.data = {"clickButtonBanner":12, "clickButtonCard":1}
+        GreetingPopup.update({ _id: item.id }, { $inc: item.data }, function(err, res) {
+            callback(err, res);
+        });
+    }
+};
+var keys = Object.keys(gpResult);
+keys = keys.map(function(key) {
+    return {
+        id: key,
+        data: gpResult[key] // -> object
+    };
 });
+async.map(keys, updateGPAsycn.query.bind(updateGPAsycn), function(err, result) {
+    if (err) {
+        console.log("updateGPAsycn err " + JSON.stringify(err));
+        return;
+    }
+    // sMes = format_sMes(result[0], null);
+    // greetingPopups = format_GP(result[1], null);
+
+    // clear lại bộ đếm tương tác
+    gpResult = {};
+
+    // sau khi có dữ liệu đủ, mình cập nhật lại gp mới, vì đã có thể thêm hoặc xóa gp rồi.
+    GreetingPopup.find({})
+        .lean().exec(function(err, docs) {
+            console.log(docs);
+            // greetingPopups = format_GP(docs, err);
+        });
+});
+
+return;
 
 // var SMessage = mongoose.model('SMessage', { date: Date, type: Number, title: String, url: String, urllink: String, pos: { x: Number, y: Number } });
 // var smsg = new SMessage({

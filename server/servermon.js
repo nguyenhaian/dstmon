@@ -192,7 +192,64 @@ var CCU = mongoose.model('CCU', { date: Date, app: {}, ip: {} });
 //     "title": "nạp gold",
 //     "url": "http://mobile.tracking.dautruong.info/img/banner/banner140916.jpg"
 // }
+var GreetingPopup = mongoose.model('GreetingPopup', {
+    type: Number,
+    title: String,
+    LQ: [Number],
+    Vip: [Number],
+    AG: [Number],
+    requirePayment: Boolean,
+    date: Date,
+    dexp: Date,
+    app: String,
+    url: String,
+    urllink: String,
+    countBtn: Number,
+    valueSms: Number,
+    valueCard: Number,
+    valueIAP: Number,
+    bonusSms: Number,
+    bonusCard: Number,
+    bonusIAP: Number,
+    showPopup: Boolean,
+    arrUrlBtn: [String],
+    arrPos: [{ Number, Number }],
+    result: {
+        //     {
+        //     clickButtonBanner: Number,
+        //     closeBanner: Number,
+        //     clickButtonIAP: Number,
+        //     clickButtonSms: Number,
+        //     clickButtonCard: Number
+        // }
+    }
+});
+
+var Type10Popup = mongoose.model('Type10Popup', {
+    type: Number,
+    title: String,
+    date: Date,
+    dexp: Date,
+    app: String,
+    url: String,
+    urllink: String,
+    countBtn: Number,
+    arrValue: [Number],
+    arrBonus: [Number],
+    arrUrlBtn: [String],
+    arrTypeBtn: [String],
+    arrPos: [{ Number, Number }],
+    result: {
+    }
+});
 var SMessage = mongoose.model('SMessage', { app: String, date: Date, type: Number, title: String, url: String, urllink: String, pos: { x: Number, y: Number } });
+
+var GPReport = mongoose.model('GPReport', {
+    date: Date,
+    gpid: Number,
+    title: String,
+    result: {}
+});
 
 // init data when server startup
 /*************************************************************/
@@ -862,8 +919,68 @@ app.get('/timelineData', function(req, res) {
     res.json(timelineFormattedData);
 });
 
+
+app.get('/popupreport', function(req, res) {
+    GreetingPopup.find({})
+        .select('_id title result clickButtonBanner closeBanner clickButtonIAP clickButtonSms clickButtonCard')
+        .lean().exec(function(err, docs) {
+            if (!err) {
+                res.setHeader('Content-Type', 'application/json');
+                res.send(JSON.stringify(docs, null, 3));
+                // res.render('view_gpreport', {
+                //     data: docs
+                // });
+            } else {
+                res.json({ err: err });
+            }
+        });
+});
+
 app.get('/performancereport', function(req, res) {
-    var limit = +24 * 60 * 2; // dữ liệu trong 12h
+    performancereport("1h", res);
+});
+app.get('/performancereport/:option', function(req, res) {
+    var option = req.params.option;
+    performancereport(option, res);
+});
+
+function performancereport(req, res) {
+    // chế độ, 
+    // 1. week
+    // 2. day
+    // 3. 6h
+    // 4. 1h
+    // 5. 30m
+    var start = moment().add(0, 'hours'); //.format("YYYY-MM-DD HH:mm:ss");
+    if (req == "month") {
+        start = moment().add(-30, 'days');
+    } else
+    if (req == "week") {
+        start = moment().add(-7, 'days');
+    } else
+    if (req == "2day") {
+        start = moment().add(-2, 'days');
+    } else
+    if (req == "day") {
+        start = moment().add(-1, 'days');
+    } else
+    if (req == "12h") {
+        start = moment().add(-12, 'hours');
+    } else
+    if (req == "6h") {
+        start = moment().add(-6, 'hours');
+    } else
+    if (req == "1h") {
+        start = moment().add(-1, 'hours');
+    } else
+    if (req == "30m") {
+        start = moment().add(-0.5, 'hours');
+    } else {
+        req = "day";
+        start = moment().add(-1, 'days');
+    }
+    // end = moment(option.date).startOf('day').add(29, 'hours'); //.format("YYYY-MM-DD HH:mm:ss");
+
     var options = {
         method: 'GET',
         url: 'http://203.162.121.174:3000/ccus',
@@ -874,7 +991,7 @@ app.get('/performancereport', function(req, res) {
 
     async.parallel({
         tsv: function(callback) {
-            dbgetCCU(limit, function onSuccess(tsv) {
+            dbgetCCU(start, function onSuccess(tsv) {
                 tsv = JSON.stringify(tsv);
                 tsv = tsv.replace(/\"/g, "");
                 callback(null, tsv);
@@ -894,12 +1011,11 @@ app.get('/performancereport', function(req, res) {
         else
             res.render('view_d3graph', {
                 tsvdata: results.tsv,
-                rccu: results.rccu
+                rccu: results.rccu,
+                req: req
             });
     });
-
-
-});
+};
 
 
 app.post('/timelineData', function(req, res) {
@@ -942,18 +1058,34 @@ app.post('/loginData', function(req, res) {
         });
 });
 
-function dbgetCCU(limit, onSuccess, onFailed) {
-    CCU.find({})
+function dbgetCCU(start, onSuccess, onFailed) {
+    // db.getCollection('ccus').find({si: { $mod: [ 5, 0 ] }})
+    // db.getCollection('ccus').find({ si: {$in: [0,5,10,15] } })
+    start = objectIdWithTimestamp(start._d);
+    var NOW = moment();
+    var duration = moment.duration(NOW.diff(start)).asMinutes();
+    var cexp = duration * 2; // count-expected: mỗi phút có 2 bản ghi
+    var cdesign = 600; // design: 600 điểm ảnh là chấp nhận đc, cdesign = [450,750];
+    // -> 
+    var n = Math.round(cexp / cdesign);
+
+    if (n == 0) // trường hợp cexp quá nhỏ
+        n = 1;
+    if (n > 20)
+        n = 20;
+    // trong tập cexp bản ghi, mình sẽ lọc bớt khoảng n lần, để đc số design (là số hiển thị đc) vào khoảng 600
+    CCU.find({ _id: { $gte: start }, si: { $mod: [n, 0] } }) // số remains = 0 -> n-1, số nào cũng đc
         .sort({ _id: -1 })
-        .limit(limit)
+        // .limit(limit) -> ko còn limit nữa
         .lean().exec(function(err, docs) {
             if (err) onFailed(err);
             else {
-                if (docs.length > 400) {
-                    var n = Math.round(docs.length / 400);
+                // có thể ko cần phép lọc này lắm, vì query kiểu mới đã lọc khá ổn.
+                if (docs.length > 600) {
+                    var n = Math.round(docs.length / 600);
                     if (n > 1) {
                         docs = docs.filter(function(value, index) {
-                            return index%n == 0;
+                            return index % n == 0;
                         });
                     }
                 }
@@ -970,9 +1102,13 @@ function dbgetCCU(limit, onSuccess, onFailed) {
                 var fields = keys_app.concat(keys_ip);
                 fields.unshift('date');
 
-                for (var i = docs.length - 1; i >= 0; i--) {
-                    docs[i].date = moment(docs[i].date).format("YY-MM-DDHH:mm:ss");
-                };
+                docs = docs.map(function(d) {
+                    d.date = moment(d.date).format("YY-MM-DDHH:mm:ss");
+                    return d;
+                });
+                // for (var i = docs.length - 1; i >= 0; i--) {
+                //     docs[i].date = moment(docs[i].date).format("YY-MM-DDHH:mm:ss");
+                // };
 
                 var tsv = json2csv({ data: docs, fields: fields, del: '\t' });
                 tsv = tsv.replace(/\"/g, "");
@@ -982,9 +1118,34 @@ function dbgetCCU(limit, onSuccess, onFailed) {
         });
 }
 
-app.get('/ccutsv/:limit', function(req, res) {
-    var limit = +req.params.limit; // thêm dấu + để cast string to int
-    dbgetCCU(limit, function onSuccess(tsv) {
+app.get('/ccutsv/:option', function(req, res) {
+    var req = req.params.option;
+    // chế độ, 
+    // 1. week
+    // 2. day
+    // 3. 6h
+    // 4. 1h
+    // 5. 30m
+    var start = moment().add(0, 'hours'); //.format("YYYY-MM-DD HH:mm:ss");
+    if (req == "week") {
+        start = moment().add(-7, 'days');
+    } else
+    if (req == "day") {
+        start = moment().add(-1, 'days');
+    } else
+    if (req == "12h") {
+        start = moment().add(-12, 'hours');
+    } else
+    if (req == "6h") {
+        start = moment().add(-6, 'hours');
+    } else
+    if (req == "1h") {
+        start = moment().add(-1, 'hours');
+    } else
+    if (req == "30m") {
+        start = moment().add(-0.5, 'hours');
+    }
+    dbgetCCU(start, function onSuccess(tsv) {
         res.writeHead(200, { "Content-Type": "text/tsv", "Content-Disposition": "inline; filename=data.tsv" });
         res.end(tsv);
     }, function onFailed(err) {
@@ -1199,55 +1360,9 @@ tracker.on('connection', function(socket) {
 
 // game-loop
 setInterval(function() {
-    // if (_.isEmpty(formattedData))
-    //     return;
-    // var copy = _.cloneDeep(formattedData);
-    // timelineFormattedData.unshift({ time: new Date(), formattedData: copy });
+    
 
-    // var snapshotData = new SnapshotData({ time: new Date(), formattedData: copy });
-    // snapshotData.save(function(err, logDoc) {
-    //     if (err) return console.error(err);
-    //     console.log('+SnapshotData');
-    // });
-
-    // var maxlength = 24 * 60 * 60 / 30;
-    // if (timelineFormattedData.length > maxlength)
-    //     timelineFormattedData.pop();
-    /*
-        var apps = [
-            { appid: 2, add: 'http://mobile.tracking.dautruong.info/notifymessage' },
-            // { appid: 2, add: 'http://mobile.dautruong.info/initdata.json' },
-            { appid: 3, add: 'http://mobile.tracking.siamplayth.com/notifymessage' }
-        ];
-        //1: lấy data về
-        _.forEach(apps, function(app) {
-            console.log('--> request pending message for ' + app.appid);
-            getPendingMessage({ target: app.appid }, function(result, appid) {
-                // result = { data: recordset }; or { err: err }
-                if (!result.data || result.data.length == 0) {
-                    console.log('<-- ' + appid + ' empty result');
-                    return;
-                } else {
-                    console.log('<-- ' + appid + ' got ' + result.data.length + ' messages');
-
-                    //2. bắn cho onesignal
-                    var campaign = {
-                        name: appid + '',
-                        targetType: 'automatic',
-                        selectedGroup: appid,
-                        selectedApp: -1,
-                        recipients: result.data
-                    }
-
-                    notify(campaign, function(result) {
-                        console.log(result);
-                    });
-                }
-            });
-        });
-    */
-
-}, 3 * 60 * 1000);
+}, 1 * 60 * 1000); // 60s xem xét tách report
 
 
 // khởi động server.listen sau 3s để chắc chắn đã load data thành công từ DB
