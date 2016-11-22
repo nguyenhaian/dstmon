@@ -99,11 +99,39 @@ table tr:nth-child(even) {
 
 
 /*gretting Popup*/
-
+.gbound {
+    margin-top: 2px;
+}
 .gbutton {
     position: relative;
-    right: 0;
-    bottom: 0;
+    float: left;
+    display: block;
+    height: 20px;
+}
+
+.gbutton-c {
+    float: left;
+    position: relative;
+    left: 5%;
+    display: inline-block;
+    text-align: center;
+    height: 20px;
+}
+
+.gbutton-r {
+    position: relative;
+    float: right;
+    display: block;
+    height: 20px;
+}
+
+table.tbbanner {
+    border: 0px solid red;
+}
+
+.code {
+    font-family:Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New; 
+    font-size: 12px;  
 }
 
 

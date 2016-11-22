@@ -35,7 +35,8 @@ var onesignal = {
             { name: 'Đấu Trường Tiến Lên', appid: '7b7b28de-9db4-4752-800c-9034d4ea79d4', key: 'ZjY0YjhjMzEtNjAyMC00OGRkLWFmNTQtOWQ4OWNlMzdkOTA4' },
             { name: 'Đấu Trường iOS new', appid: 'abfbab6c-ec9c-44d7-88b9-973c8088c20c', key: 'ZmZkODQ4MDEtN2IzYS00NjljLTk0ZjEtYTNjOWY2MzJjNDY2' },
             { name: 'Đấu Trường 2016', appid: 'b1b029c9-81c1-4c78-a80f-091547041204', key: 'NDBmMmRhYzMtNTFhYy00OGI4LTllY2YtYzllNGVkNWMxZjVl' },
-            { name: 'Xanh 9', appid: '78398b12-0ba0-4879-8ab7-7b7ef6a3aa67', key: 'ZDBhMjRiYTktMWI4Zi00MzhkLTlmMGMtMzA5NGZmYWExYmUz' }
+            { name: 'Xanh 9', appid: '78398b12-0ba0-4879-8ab7-7b7ef6a3aa67', key: 'ZDBhMjRiYTktMWI4Zi00MzhkLTlmMGMtMzA5NGZmYWExYmUz' },
+            { name: '88Club', appid: 'cce874c5-c0f8-4875-9342-7c2085e3f53f', key: 'OGE2MzMyMzQtZWY2MS00YmM0LWIzMGEtYTAwMGI0NmJiYmNk' }
         ]
     }, {
         groupname: 'Group Siam Play',
@@ -192,6 +193,7 @@ var CCU = mongoose.model('CCU', { date: Date, app: {}, ip: {} });
 //     "title": "nạp gold",
 //     "url": "http://mobile.tracking.dautruong.info/img/banner/banner140916.jpg"
 // }
+
 var GreetingPopup = mongoose.model('GreetingPopup', {
     type: Number,
     title: String,
@@ -225,12 +227,28 @@ var GreetingPopup = mongoose.model('GreetingPopup', {
     }
 });
 
+// requirePayment:
+// 0 -> chưa nạp tiền -> hiển thị banner này. 
+// 1 -> nạp tiền rồi -> ko hiển thị banner này.
+// 2 -> nạp tiền rồi -> hiển thị banner này.
+// 3 -> ko quan tâm
 var Type10Popup = mongoose.model('Type10Popup', {
+    app: String,
     type: Number,
+    showType: Number, // 0: login, 1: lúc hết tiền
     title: String,
+    note: String,
+    showLimit: Number, // số lần hiển thị tối da trong 1 ngày với 1 user
+    LQ: [Number],
+    Vip: [Number],
+    AG: [Number],
+    version: [Number, Number],
+    os: Number, // 0: không quan tâm, 1: iOS, 2: android
+    stake: [Number, Number], // chỉ dùng khi showtype == 1
+    requirePayment: Number,
+    priority: Number,
     date: Date,
     dexp: Date,
-    app: String,
     url: String,
     urllink: String,
     countBtn: Number,
@@ -239,8 +257,7 @@ var Type10Popup = mongoose.model('Type10Popup', {
     arrUrlBtn: [String],
     arrTypeBtn: [String],
     arrPos: [{ Number, Number }],
-    result: {
-    }
+    result: {}
 });
 var SMessage = mongoose.model('SMessage', { app: String, date: Date, type: Number, title: String, url: String, urllink: String, pos: { x: Number, y: Number } });
 
@@ -430,7 +447,7 @@ function dbgetGrettingPopup(option, onSuccess, onFailed) {
     var getGPAsycn = {
         query: function(querystring, callback) {
             SMessage.find(querystring)
-                .limit(20)
+                .limit(200)
                 .exec(function(err, docs) {
                     callback(err, docs);
                 });
@@ -919,21 +936,111 @@ app.get('/timelineData', function(req, res) {
     res.json(timelineFormattedData);
 });
 
+function format_sMes(docs) {
+    var data = [];
+    for (var i = docs.length - 1; i >= 0; i--) {
+        var doc = docs[i];
+        var result = doc.result;
 
-app.get('/popupreport', function(req, res) {
-    GreetingPopup.find({})
-        .select('_id title result clickButtonBanner closeBanner clickButtonIAP clickButtonSms clickButtonCard')
-        .lean().exec(function(err, docs) {
-            if (!err) {
-                res.setHeader('Content-Type', 'application/json');
-                res.send(JSON.stringify(docs, null, 3));
-                // res.render('view_gpreport', {
-                //     data: docs
-                // });
-            } else {
-                res.json({ err: err });
-            }
+        var datekeys = Object.keys(result);
+        // sort tăng dần
+        datekeys.sort(function(x, y) {
+            if (x == y) return 0;
+            return x < y;
         });
+
+        delete doc.result;
+
+        // chạy giảm dần
+        _.forEach(datekeys, function(date, index) {
+            var dayResult = result[date];
+
+            var oskeys = Object.keys(dayResult);
+            _.forEach(oskeys, function(os) {
+                var osResult = dayResult[os];
+
+                var res = {};
+                var totalValue = 0;
+                var positionKeys = Object.keys(osResult);
+                _.forEach(positionKeys, function(pos) {
+                    var posResult = osResult[pos];
+
+                    _.forEach(Object.keys(posResult), function(eventkey) {
+                        if (!_.has(res, eventkey)) {
+                            res[eventkey] = 0;
+                        }
+                        res[eventkey] += posResult[eventkey];
+                        totalValue += posResult[eventkey];
+                    });
+                });
+
+                var item = {
+                    date: date,
+                    id: doc._id,
+                    title: doc.title,
+                    showType: doc.showType,
+                    type: doc.type,
+                    priority: doc.priority,
+                    os: os,
+                    Vip: doc.Vip,
+                    LQ: doc.LQ,
+                    AG: doc.AG,
+                    url: doc.url,
+                    totalValue: totalValue
+                };
+                _.extend(item, res);
+                data.push(item);
+            });
+        });
+
+    };
+
+    // sort giảm dần theo ngày
+    // data.sort();
+    // console.log(data);
+    data.sort(function(x, y) {
+        if (x.date > y.date) return -1;
+        if (x.date < y.date) return 1;
+        return 0;
+    });
+
+    // _.forEach(data, function(item){
+    //     console.log(item.date);
+    // });
+
+    return data;
+}
+
+
+app.get('/popupreport/:app', function(req, res) {
+    var app = req.params.app;
+
+    var getGPAsycn = {
+        query: function(queryObject, callback) {
+            queryObject.find({ app: app })
+                .select('_id title showType type priority Vip LQ AG url result')
+                .limit(200).lean().exec(function(err, docs) {
+                    callback(err, docs);
+                });
+        }
+    };
+
+    async.map([SMessage, GreetingPopup, Type10Popup], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
+        if (err) {
+            res.send(JSON.stringify(err, null, 3));
+            return;
+        }
+
+        // res.setHeader('Content-Type', 'application/json ');
+        // res.send(JSON.stringify(docs, null, 3));
+        res.render('view_banner_report', {
+            date: moment().format('DD/MM, HH:mm:ss'),
+            lodash: _,
+            'type10': format_sMes(result[2]),
+            'type5': format_sMes(result[1]),
+            'sMes': format_sMes(result[0])
+        });
+    });
 });
 
 app.get('/performancereport', function(req, res) {
@@ -1177,6 +1284,117 @@ app.post('/getGP', function(req, res) {
         });
 });
 
+app.post('/getBanner', function(req, res) {
+    // console.log(JSON.stringify(req.body));
+    var option = req.body;
+    var query = Type10Popup.find(option.query);
+
+    if (option.selectOption) {
+        query = query.select(option.selectOption);
+    }
+    if (option.limit) {
+        query = query.limit(option.limit);
+    }
+
+    query.exec(function(err, docs) {
+        res.json({ app: option.app, err: err, data: docs });
+    });
+});
+
+app.get('/getBanner/:_id', function(req, res) {
+    // console.log(JSON.stringify(req.body));
+    var _id = req.params._id;
+    var query = Type10Popup.find({ _id: _id });
+    query.exec(function(err, doc) {
+        res.json({ err: err, data: doc });
+    });
+});
+
+app.post('/saveBanner', function(req, res) {
+    var option = req.body; // { _id: item._id, data: data }
+    if (_.has(option.data, 'result'))
+        delete option.data.result;
+
+    Type10Popup.update({ _id: option._id }, {
+        $set: option.data
+    }, { new: true }, function(err, doc) {
+        if (err) {
+            res.json({ err: err });
+            console.log("Type10Popup saveBanner failed!");
+            return;
+        }
+        res.setHeader('Content-Type', 'application/json');
+        res.send(JSON.stringify(doc, null, 3));
+    });
+});
+
+app.post('/createBanner', function(req, res) {
+    var option = req.body; // { _id: item._id, data: data }
+
+    var data = {
+        app: option.app,
+        type: 10,
+        showType: 0,
+        title: '',
+        note: 'String',
+        showLimit: 100, // số lần hiển thị tối da trong 1 ngày với 1 user
+        LQ: [0, 100000000],
+        Vip: [0, 10],
+        AG: [0, 100000000],
+        version: [0, 10],
+        os: 0, // 0: không quan tâm, 1: iOS, 2: android
+        stake: [0, 10000000], // chỉ dùng khi showtype == 1
+        requirePayment: 3,
+        priority: 0,
+        date: Date(),
+        dexp: Date(),
+        url: '',
+        urllink: '',
+        countBtn: 3,
+        arrTypeBtn: [
+            "sms",
+            "sms",
+            "iap"
+        ],
+        arrUrlBtn: [
+            "http://siamplayth.com/mconfig/banner/button/btn_sms.png",
+            "http://siamplayth.com/mconfig/banner/button/btn_sms.png",
+            "http://siamplayth.com/mconfig/banner/button/btn_iap.png"
+        ],
+        arrBonus: [
+            100,
+            200,
+            300
+        ],
+        arrValue: [
+            0,
+            1,
+            0
+        ],
+        arrPos: [{
+            "x": -0.3,
+            "y": -0.3
+        }, {
+            "x": 0,
+            "y": -0.3
+        }, {
+            "x": 0.3,
+            "y": -0.3
+        }],
+    };
+    var banner = new Type10Popup(data);
+    banner.save(function(err, doc) {
+        if (err) {
+            console.log("Something wrong when insert banner! ");
+            console.log(err);
+        }
+
+        res.json({ err: err, data: doc });
+    });
+});
+
+
+
 app.post('/actionLoadConfig', function(req, res) {
     // console.log(JSON.stringify(req.body));
     var option = req.body;
@@ -1360,7 +1578,7 @@ tracker.on('connection', function(socket) {
 
 // game-loop
 setInterval(function() {
-    
+
 
 }, 1 * 60 * 1000); // 60s xem xét tách report
 

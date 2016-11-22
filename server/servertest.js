@@ -1,3 +1,4 @@
+var reload = require('require-reload')(require);
 var express = require('express')
 var app = express()
 var server = require('http').createServer(app)
@@ -11,6 +12,7 @@ var mongoose = require('mongoose')
 var sql = require('mssql')
 var request = require('request');
 var async = require("async");
+var utils = reload('./utils.js')
 
 var FB = require('fb');
 FB.options({ version: 'v2.7' });
@@ -38,13 +40,14 @@ var campaign = {
 }
 
 mongoose.connect('mongodb://localhost/CustomerMonitor');
-
+var SMessage = mongoose.model('SMessage', { app: String, date: Date, type: Number, title: String, url: String, urllink: String, pos: { x: Number, y: Number } });
 var GreetingPopup = mongoose.model('GreetingPopup', {
     type: Number,
     title: String,
     LQ: [Number],
     Vip: [Number],
     AG: [Number],
+    requirePayment: Number,
     date: Date,
     dexp: Date,
     app: String,
@@ -60,12 +63,15 @@ var GreetingPopup = mongoose.model('GreetingPopup', {
     showPopup: Boolean,
     arrUrlBtn: [String],
     arrPos: [{ Number, Number }],
-    result: {},
-    clickButtonBanner: Number,
-    closeBanner: Number,
-    clickButtonIAP: Number,
-    clickButtonSms: Number,
-    clickButtonCard: Number
+    result: {
+        //     {
+        //     clickButtonBanner: Number,
+        //     closeBanner: Number,
+        //     clickButtonIAP: Number,
+        //     clickButtonSms: Number,
+        //     clickButtonCard: Number
+        // }
+    }
 });
 
 var Type10Popup = mongoose.model('Type10Popup', {
@@ -119,6 +125,84 @@ var MUser = mongoose.model('User', {
         // d: ngày kết bạn
 });
 
+
+function format_sMes(docs, err) {
+    if (err) {
+        console.log(err);
+        return {};
+    }
+
+    var sMes = {};
+    // docs là array, lọc theo date cập nhật vào sMes
+    _.forEach(docs, function(doc) {
+        // filter by time
+        var dexp = moment(doc.dexp);
+        var dsta = moment(doc.date);
+        if (moment().isAfter(dexp) || moment().isBefore(dsta))
+            return;
+        var app = doc.app;
+        if (app) {
+            if (!sMes[app]) {
+                sMes[app] = []; // new array
+            }
+            sMes[app].push(doc);
+        }
+    });
+
+    return sMes;
+}
+
+
+var getGPAsycn = {
+    query: function(queryObject, callback) {
+        queryObject.find({})
+            .limit(20).lean().exec(function(err, docs) {
+                callback(err, docs);
+            });
+    }
+};
+
+async.map([SMessage, GreetingPopup, Type10Popup], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
+    if (err) {
+        // res.send(JSON.stringify(err, null, 3));
+        console.log("err");
+        return;
+    }
+
+    var sMes = format_sMes(result[0], null);
+    var greetingPopups = format_sMes(result[1], null);
+    var type10Popups = format_sMes(result[2], null);
+
+    var c1 = Object.keys(sMes).length;
+    var c2 = Object.keys(greetingPopups).length;
+    var c3 = Object.keys(type10Popups).length;
+
+    var ret = _.cloneDeep(sMes);
+    _.extend(ret, greetingPopups);
+    _.extend(ret, type10Popups);
+    console.log(c1)
+    console.log(c2)
+    console.log(c3)
+    console.log(greetingPopups)
+        // var user = {
+        //         app: 'siam',
+        //         gameid: 8006,
+        //         vip: 1
+        //     },
+        //     gold = 50000,
+        //     stake = 20000;
+        // var sMesData = utils.gettype10popup(user.app, type10Popups, user.gameid, gold, user.vip, stake);
+        // console.log('after');
+        // console.log(sMesData);
+
+    // var ret = _.cloneDeep(sMes);
+    // _.extend(ret, greetingPopups);
+    // res.setHeader('Content-Type', 'application/json');
+    // res.send(JSON.stringify(ret, null, 3));
+
+});
+
+return;
 
 var data = {
     "type": 10,

@@ -63,10 +63,11 @@ jsonfile.readFile(sendpulse.configurl, function(err, config) {
     sendpulse.config = config;
 });
 // system message được lưu vào mảng này, nhằm giảm thời gian gọi từ DB
-var sMes = {};
-var greetingPopups = {};
-var type10Popups = {};
+var sMesData0 = {}; // cái này chứa system message dạng login
+var sMesData1 = {}; // message dạng hết tiền
+var sMesData2 = {}; // message lúc lên vip
 var gpResult = {}; //lưu phản hồi của khách ở object này
+var uaResult = {}; //Lưu dữ liệu thống kê tương tác theo ngày
 
 /*************************************************************/
 mongoose.connect('mongodb://localhost/CustomerMonitor');
@@ -96,7 +97,10 @@ var GreetingPopup = mongoose.model('GreetingPopup', {
     LQ: [Number],
     Vip: [Number],
     AG: [Number],
+    version: [Number, Number],
+    os: Number, //os: Number, // 0: không quan tâm, 1: iOS, 2: android
     requirePayment: Number,
+    priority: Number,
     date: Date,
     dexp: Date,
     app: String,
@@ -123,12 +127,28 @@ var GreetingPopup = mongoose.model('GreetingPopup', {
     }
 });
 
+// requirePayment:
+// 0 -> chưa nạp tiền -> hiển thị banner này. 
+// 1 -> nạp tiền rồi -> ko hiển thị banner này.
+// 2 -> nạp tiền rồi -> hiển thị banner này.
+// 3 -> ko quan tâm
 var Type10Popup = mongoose.model('Type10Popup', {
+    app: String,
     type: Number,
+    showType: Number, // 0: login, 1: lúc hết tiền
     title: String,
+    note: String,
+    showLimit: Number, // số lần hiển thị tối da trong 1 ngày với 1 user
+    LQ: [Number],
+    Vip: [Number],
+    AG: [Number],
+    version: [Number, Number],
+    os: Number, // 0: không quan tâm, 1: iOS, 2: android
+    stake: [Number, Number], // chỉ dùng khi showtype == 1
+    requirePayment: Number,
+    priority: Number,
     date: Date,
     dexp: Date,
-    app: String,
     url: String,
     urllink: String,
     countBtn: Number,
@@ -156,7 +176,10 @@ var MUser = mongoose.model('User', {
     vip: Number,
     gold: Number,
     lq: Number,
-    increaseLQ: Number,
+    lqc: [{ d: Date, lq: Number, plus: Number }], // mảng thay đổi LQ
+    increaseLQ: Number, // -> tính lại increaseLQ theo từng lần thay đổi, ko tính theo lần đăng nhập nữa.
+    popupHasShowed: {}, // số popup đã nhận đc trong ngày.
+    loginCount: Number,
     fbName: String,
     fbID: String,
     d1: Date,
@@ -169,6 +192,7 @@ var MUser = mongoose.model('User', {
     lIP: String,
     fFB: [], // danh sách nhanh các bạn từ fFB cũng chơi game, limit 200 bạn
     fFBSize: Number, // để truy vấn nhanh
+    // videoWatched: Number,
     // ban đầu fG bao gồm fFB, fG: [{fbid:Number}]
     // sau đó sẽ đc cập nhật thành, fG: [{fbid:Number, uid:Number, name:String, }]
     lastUpdateFB: Date,
@@ -176,6 +200,7 @@ var MUser = mongoose.model('User', {
     // sMsg: [{ mid: String, beh: Number, date: Date }], // danh sách system message -> ko cần thiết lắm
     // beh:0 - đã gửi, 1 - in, 2 - out
     // date: ngày user có tương tác, dexp: ngày mà msg hết hiệu lực, nên xóa trong mảng này đi
+    // lastGame:{gid:String, stake:Number},
     cp: [{ pid: String, gid: Number, n: String, c: Number, d: Date }], // danh sách player hay choi cùng, Ghi vào Db lúc user thoát
     // gid: gameid, n:name, c: count, d: last date phát sinh ván chơi cùng
     fl: [{ pid: String, gid: Number, n: String, d: Date }] // follow list
@@ -184,6 +209,10 @@ var MUser = mongoose.model('User', {
         // d: ngày kết bạn
 });
 
+var UAResult = mongoose.model('UAResult', {
+    event: String,
+    result: {}
+});
 // init data when server startup
 /*************************************************************/
 var lastHours = moment().subtract(1, 'hours').format("YYYY-MM-DD HH:mm:ss");
@@ -209,20 +238,49 @@ Dist.find({})
         });
     });
 
-SMessage.find({})
-    .lean().exec(function(err, docs) {
-        sMes = format_sMes(docs, err);
+var getGPAsycn = {
+    query: function(queryObject, callback) {
+        queryObject.find({ date: { $lte: new Date() }, dexp: { $gte: new Date() } })
+            .limit(100).lean().exec(function(err, docs) {
+                callback(err, docs);
+            });
+    }
+};
+
+async.map([SMessage, GreetingPopup, Type10Popup], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
+    if (err) {
+        res.send(JSON.stringify(err, null, 3));
+        return;
+    }
+
+    var data = result[0].concat(result[1]).concat(result[2]);
+    // vì type10 được sử dụng thường xuyên nên mình format luôn
+    sMesData0 = data.filter(function(item) {
+        if (!_.has(item, 'showType'))
+            item.showType = 0; // hiện lúc login
+
+        return item.showType == 0;
     });
 
-GreetingPopup.find({})
-    .lean().exec(function(err, docs) {
-        greetingPopups = format_sMes(docs, err);
+    sMesData1 = data.filter(function(item) {
+        if (!_.has(item, 'showType'))
+            item.showType = 0; // hiện lúc hết tiền
+
+        return item.showType == 1;
     });
 
-Type10Popup.find({})
-    .lean().exec(function(err, docs) {
-        type10Popups = format_sMes(docs, err);
+    sMesData2 = data.filter(function(item) {
+        if (!_.has(item, 'showType'))
+            item.showType = 0; // hiện lúc thay đổi vip
+
+        return item.showType == 2;
     });
+
+
+    sMesData0 = format_sMes(sMesData0);
+    sMesData1 = format_sMes(sMesData1);
+    sMesData2 = format_sMes(sMesData2);
+});
 
 /*************************************************************/
 // SETTING
@@ -236,7 +294,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 app.use(function(req, res, next) {
-    res.header("Access-Control-Allow-Origin", "http://203.162.121.174:3001");
+    res.header("Access-Control-Allow-Origin", "http://nguyenhaian.com:3003");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
 });
@@ -275,6 +333,10 @@ function getTimeStamp() {
     return (moment().format("YYYY-MM-DD HH:mm:ss"));
 }
 
+function format_sMes(docs) {
+    return format_sMes(docs, null);
+}
+
 function format_sMes(docs, err) {
     if (err) {
         console.log(err);
@@ -284,11 +346,7 @@ function format_sMes(docs, err) {
     var sMes = {};
     // docs là array, lọc theo date cập nhật vào sMes
     _.forEach(docs, function(doc) {
-        // filter by time
-        var dexp = moment(doc.dexp);
-        var dsta = moment(doc.date);
-        if (moment().isAfter(dexp) || moment().isBefore(dsta))
-            return;
+        // filter by time, -> ko cần nữa, đã làm ở bước query
         var app = doc.app;
         if (app) {
             if (!sMes[app]) {
@@ -562,6 +620,7 @@ function captureUserAction(socket, user, user_update) {
             _.extend(iuser, user_update);
 
             addOrUpdateUserToDB(iuser, function(ruser) {
+                // user.ruser = ruser;
                 // ruser có thể là null, nên phải check trước
                 if (ruser && user) { // update ngược lại lastUpdateFB vào input, để dễ dàng quyết định có sử dụng getExtraInfo hay ko
                     // ở đây user chính là connectedDevices[socket.id]
@@ -576,26 +635,34 @@ function captureUserAction(socket, user, user_update) {
                     if (ruser.dev) user._dev = ruser.dev;
                     if (ruser.disid) user._dis = ruser.disid;
                     if (ruser.ip) user._ip = ruser.ip;
+                    if (ruser._id) user._id = ruser._id;
+                    if (ruser.lqc) user.lqc = ruser.lqc;
                     if (ruser.fFB) {
                         user.fFB = ruser.fFB;
                         sendNotifyToFriendsOfUser(user);
                     }
-                    user.increaseLQ = ruser.increaseLQ;
-                    user.firstlogin = ruser.firstlogin;
+
+                    // biến phục vụ NOTE 28/10x
+                    user.increaseLQ = ruser.increaseLQ || 0;
+                    user.popupHasShowed = ruser.popupHasShowed || {};
+                    user.loginCount = (ruser.loginCount || 0) + 1;
+
+                    if (moment().day() > moment(ruser.d2).day()) {
+                        // lần đầu tiên login ngày mới.
+                        user.increaseLQ = 0;
+                        user.popupHasShowed = {};
+                        user.loginCount = 1;
+                    }
+
                     user.lastSaveToDB = new Date();
 
+                    socket.emit('event', { event: 'friends', data: ["an", "huu anh", "lam", "giang"], vip: [1, 2, 3, 4] });
+
                     // thời điểm bắn sMes
-                    // kiểm tra những smes mà user đã nhận so với sMes của server
+                    // kiểm tra những sMes mà user đã nhận so với sMes của server
                     // order lại thứ tự nhận rồi emit về cho user
-
-                    // merge sMes với cả greetingPopups;
-                    var data = sMes[user.app];
-                    if (!data)
-                        data = greetingPopups[user.app];
-                    if (!data)
-                        return;
-
-                    sMesData = _.cloneDeep(data);
+                    var sMes = sMesData0[user.app];
+                    utils.sendPopups(socket, MUser, user, sMes);
 
                     // kiểm tra firstlogin để trả về news
                     // var YESTERDAY = moment().clone().subtract(1, 'days').startOf('day');
@@ -605,86 +672,6 @@ function captureUserAction(socket, user, user_update) {
                     // } else {
                     // nếu dùng chính sách khác, có thể cho vào đây. 
                     // CS1: đấu trường chỉ cần ko bắn dầy
-
-                    socket.emit('event', { event: 'friends', data: ["an", "huu anh", "lam", "giang"], vip: [1, 2, 3, 4] });
-
-                    if (user.app == "dautruong") {
-                        var NOW = moment();
-                        var lastActiveDate = moment(ruser.d2);
-                        var duration = moment.duration(NOW.diff(lastActiveDate)).asMinutes();
-                        if (duration > 60 * 1) {
-                            if (sMesData.length > 0)
-                                socket.emit('event', { event: 'news', data: sMesData });
-                        }
-                    } else {
-                        // hiện news
-                        if (user.app == "siam" && !iprange.inVietnam(user.ip)) {
-                            // nếu user cũ (ko gửi lq lên) thì ko gửi về
-                            if (_.has(user, 'lq') && _.has(user, 'vip') && _.has(user, 'ag')) {
-                                // lọc sMesData
-                                sMesData = sMesData.filter(function(d) {
-                                    if (!d.hasOwnProperty('requirePayment'))
-                                        d.requirePayment = 3;
-                                    // 0 -> chưa nạp tiền -> hiển thị banner này. 
-                                    // 1 -> nạp tiền rồi -> ko hiển thị banner này.
-                                    // 2 -> nạp tiền rồi -> hiển thị banner này.
-                                    // 3 -> ko quan tâm
-
-                                    var pass_lqcheck = (user.increaseLQ == 0 && d.requirePayment == 0) || !(user.increaseLQ > 0 && d.requirePayment == 1) || (user.increaseLQ > 0 && d.requirePayment == 2) || (d.requirePayment == 3)
-                                    var pass_filter = (user.lq >= d.LQ[0] && user.lq <= d.LQ[1] && user.vip >= d.Vip[0] && user.vip <= d.Vip[1] && user.ag >= d.AG[0] && user.ag <= d.AG[1] && pass_lqcheck);
-                                    return pass_filter;
-                                });
-                                // NOTE 28/10: một số popup hoạt động theo kiểu
-                                // 1. đăng nhập lần đầu ở ngày mới sẽ hiện, user.increaseLQ = 0
-                                // 2. các lần đăng nhập mới, nhưng ngày hôm đó chưa nạp tiền -> hiện tiếp, user.increaseLQ = 0
-
-                                // -> giải pháp: 
-                                // Lưu LQ lần đăng nhập đầu lại, sau đó check thay đổi với lần đầu.
-
-                                if (sMesData.length > 0) {
-                                    var sMesData = sMesData.map(function(item) {
-                                        var urls = item.url.split(";");
-                                        urls = urls.filter(function(d) {
-                                            return (/\S/.test(d));
-                                        });
-                                        if (urls.length > 1) {
-                                            var n = getRandomInt(0, urls.length - 1);
-                                            item.url = urls[n];
-                                            if (!_.has(user, item._id)) {
-                                                user[item._id] = {};
-                                            }
-                                            user[item._id].sMesIndex = n;
-                                        }
-                                        return item;
-                                    });
-
-                                    sMesData = shuffle(sMesData);
-
-                                    sMesData.sort(function(a, b) {
-                                        if (!_.has(a, 'priority'))
-                                            a.priority = 1000;
-                                        if (!_.has(b, 'priority'))
-                                            b.priority = 1000;
-                                        return a.priority - b.priority;
-                                    });
-
-                                    function uniqBy(a, key) {
-                                        var seen = {};
-                                        return a.filter(function(item) {
-                                            var k = key(item);
-                                            return seen.hasOwnProperty(k) ? false : (seen[k] = true);
-                                        })
-                                    }
-
-                                    sMesData = uniqBy(sMesData, function(item){
-                                        return item.priority;
-                                    });
-
-                                    socket.emit('event', { event: 'news', data: sMesData });
-                                }
-                            }
-                        }
-                    }
                 }
             });
         } else {
@@ -740,6 +727,60 @@ function captureUserAction(socket, user, user_update) {
         if (user_update != null && user_update.scene_name != undefined && user_update.scene_name.includes('GAMELIST_VIEW')) {
             socket.emit('event', { event: 'info', data: 'back to home view' });
         }
+
+        if (user_update != null) {
+            // 1. phát hiện thay đổi LQ
+            if (_.has(user, 'lq') && _.has(user_update, 'lq')) {
+                var lq1 = user.lq;
+                var lq2 = user_update.lq;
+                if (lq2 != lq1) {
+                    user.increaseLQ += (lq2 - lq1);
+                    // thay đổi LQ, 
+                    if (!_.has(user, 'lqc'))
+                        user.lqc = [];
+                    user.lqc.push({
+                        d: new Date(),
+                        lq: lq1,
+                        plus: (lq2 - lq1)
+                    });
+                    user.lqc.filter(function(item) {
+                        var date = moment(item.d);
+                        return moment.duration(moment().diff(date)).asDays() <= 30;
+                    });
+                    // lưu vào DB luôn
+                    var data = {
+                        lqc: user.lqc,
+                        increaseLQ: user.increaseLQ
+                    }
+
+                    if (user.hasOwnProperty('_id')) {
+                        MUser.findOneAndUpdate({ _id: user._id }, {
+                            $set: data
+                        }, { new: true }, function(err, doc) {
+                            if (err) {
+                                console.log("Something wrong when updating lqc mUser! ");
+                                console.log(err);
+                            }
+                        });
+                    }
+                }
+            }
+            // 2. phát hiện thay đổi VIP
+            if (user_update.vip != user.vip) {
+                // Xem xét bắn banner showType = 1
+                user.lastChangeVip = {
+                    value: user_update.vip,
+                    before: user.vip,
+                    date: Date()
+                }
+
+                var sMes = sMesData2[user.app];
+                // user.lastGame = { gameid: user.gameid, stake: stake };
+                sMes = utils.filterShowType2(sMes, user);
+                utils.sendPopups(socket, MUser, user, sMes);
+            }
+        }
+        // 3. Tình Huống thoát game cũng đo được, nhưng đo chỗ khác.
     }
 
     // trường hợp scene_name undefined là khi device ở màn hình Login và ở bản cũ thì ko gửi scene_name lên
@@ -814,9 +855,16 @@ app.get('/users/:username', function(req, res) {
         }
     });
 
-    // res.json(result);
-    res.setHeader('Content-Type', 'application/json');
-    res.send(JSON.stringify(result, null, 3));
+    if (_.isEmpty(result)) {
+        MUser.findOne({ name: username }).exec(function(err, ruser) {
+            res.setHeader('Content-Type', 'application/json');
+            res.send(JSON.stringify({ status: 'OFFLINE', user: ruser }, null, 3));
+        });
+    } else {
+        res.setHeader('Content-Type', 'application/json');
+        res.send(JSON.stringify(result, null, 3));
+    }
+
 });
 
 app.get('/checkIPVN/:ip', function(req, res) {
@@ -838,6 +886,12 @@ app.get('/gpResult', function(req, res) {
     res.send(JSON.stringify(gpResult, null, 3));
 });
 
+
+app.get('/uaResult', function(req, res) {
+    // res.json(result);
+    res.setHeader('Content-Type', 'application/json');
+    res.send(JSON.stringify(uaResult, null, 3));
+});
 
 app.post('/testevent', function(req, res) {
     var username = req.body.name;
@@ -868,16 +922,7 @@ app.get('/sendpulse', function(req, res) {
 });
 
 app.get('/sMes', function(req, res) {
-    // cập nhật lại sMes list
-
-    var getGPAsycn = {
-        query: function(queryObject, callback) {
-            queryObject.find({})
-                .limit(20).lean().exec(function(err, docs) {
-                    callback(err, docs);
-                });
-        }
-    };
+    utils = reload('./utils.js');
 
     async.map([SMessage, GreetingPopup, Type10Popup], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
         if (err) {
@@ -885,12 +930,40 @@ app.get('/sMes', function(req, res) {
             return;
         }
 
-        sMes = format_sMes(result[0], null);
-        greetingPopups = format_sMes(result[1], null);
-        type10Popups = format_sMes(result[2], null);
+        var data = result[0].concat(result[1]).concat(result[2]);
+        // vì type10 được sử dụng thường xuyên nên mình format luôn
+        sMesData0 = data.filter(function(item) {
+            if (!_.has(item, 'showType'))
+                item.showType = 0; // hiện lúc login
 
-        var ret = _.cloneDeep(sMes);
-        _.extend(ret, greetingPopups);
+            return item.showType == 0;
+        });
+
+        sMesData1 = data.filter(function(item) {
+            if (!_.has(item, 'showType'))
+                item.showType = 0; // hiện lúc hết tiền
+
+            return item.showType == 1;
+        });
+
+        sMesData2 = data.filter(function(item) {
+            if (!_.has(item, 'showType'))
+                item.showType = 0; // hiện lúc thay đổi vip
+
+            return item.showType == 2;
+        });
+
+
+        sMesData0 = format_sMes(sMesData0);
+        sMesData1 = format_sMes(sMesData1);
+        sMesData2 = format_sMes(sMesData2);
+
+        var ret = {
+            sMesData0: sMesData0,
+            sMesData1: sMesData1,
+            sMesData2: sMesData2
+        }
+
         res.setHeader('Content-Type', 'application/json');
         res.send(JSON.stringify(ret, null, 3));
 
@@ -1184,7 +1257,7 @@ function addOrUpdateUserToDB(iuser, callback) {
                     ip: [{ id: iuser.ip, la: new Date() }]
                 }
                 // không thể check là if(iuser.ag) vì giá trị ag có thể là 0
-            if (iuser.hasOwnProperty('ag')) data.gold = iuser.ag;
+            data.gold = iuser.ag || iuser.gold;
             if (iuser.hasOwnProperty('vip')) data.vip = iuser.vip;
             if (iuser.hasOwnProperty('lq')) data.lq = iuser.lq;
 
@@ -1263,17 +1336,18 @@ function addOrUpdateUserToDB(iuser, callback) {
                 }
             }
 
-            // biến phục vụ NOTE 28/10x
-            if (!ruser.hasOwnProperty('increaseLQ'))
-                ruser.increaseLQ = 0;
+            var increaseLQ = ruser.increaseLQ || 0;
+            var popupHasShowed = ruser.popupHasShowed || {};
+            var loginCount = ruser.loginCount || 0;
+
             if (moment().day() > moment(ruser.d2).day()) {
                 // lần đầu tiên login ngày mới.
-                ruser.firstlogin = true;
-                ruser.increaseLQ = 0;
-            } else {
-                ruser.firstlogin = false;
-                ruser.increaseLQ = ruser.increaseLQ + iuser.lq - ruser.lq;
+                loginCount = 0;
+                increaseLQ = 0;
+                popupHasShowed = {};
             }
+
+            // hình như ruser là const
 
             // lưu ý không tùy tiện đưa callback xuống dưới, vì ở callback có thể xử lí sự khác nhau 
             // giữa user lưu trong DB và user đc gửi lên.
@@ -1288,9 +1362,11 @@ function addOrUpdateUserToDB(iuser, callback) {
                 disid: disid,
                 dev: dev,
                 ip: ip,
-                increaseLQ: ruser.increaseLQ
+                increaseLQ: increaseLQ,
+                loginCount: loginCount + 1,
+                popupHasShowed: popupHasShowed
             }
-            if (iuser.hasOwnProperty('ag')) data.gold = iuser.ag;
+            data.gold = iuser.ag || iuser.gold || -1;
             if (iuser.hasOwnProperty('vip')) data.vip = iuser.vip;
             if (iuser.hasOwnProperty('lq')) data.lq = iuser.lq;
 
@@ -1497,6 +1573,11 @@ function handleConnection(socket, app) {
         // console.log(getTimeStamp() + " event: " + JSON.stringify(data));
 
         var user = connectedDevices[socket.id];
+
+        var hasConsumed = utils.handleEvent(user, data, uaResult);
+        if (hasConsumed)
+            return;
+
         switch (data.event) {
             case 'load_config':
                 // {'event':'load_config', d:0.1};
@@ -1629,10 +1710,13 @@ function handleConnection(socket, app) {
             case 'leaveTable':
                 var gold = data.ag;
                 var stake = data.stake;
-                // var type10Popups;
-                var sMesData = utils.gettype10popup(user.app, type10Popups, user.gameid, gold, user.vip, stake);
-                if (sMesData.length > 0)
-                    socket.emit('event', { event: 'news', data: sMesData });
+                var sMes = sMesData1[user.app];
+                user.lastGame = { gameid: user.gameid, stake: stake };
+                sMes = utils.filterShowType1(sMes, user.gameid, gold, user.vip, stake);
+                utils.sendPopups(socket, MUser, user, sMes);
+            case 'videoCount':
+                user.videoWatched = data.videoCurrent;
+                break;
             case 'clicksuggestdummy': // TODO
                 if (!siamActions['clicksuggestdummy'])
                     siamActions['clicksuggestdummy'] = 0;
@@ -1672,11 +1756,20 @@ function handleConnection(socket, app) {
             case 'eout': // event.out
                 console.log(`${user.username} eout ${JSON.stringify(data)}`);
                 break;
+            case 'ctable':
+                // {"event":"ctable","tid":22261,"stake":100}
+                break;
                 // Banner kiểu siam
             case 'clickButtonBanner':
             case 'clickButtonIAP':
             case 'clickButtonSms':
             case 'clickButtonCard':
+            case 'closeBanner':
+            case 'clickButonViewAd':
+            case 'clickButtonShowPayment':
+            case 'clickButtonHaveNothing':
+            case 'clickButtonOpenUrl':
+            case 'clickButtonOpenShare':
                 var ev = data.event;
                 var id = data.id; // gp id;
                 var date = moment().format("YYYY-MM-DD");
@@ -1699,6 +1792,7 @@ function handleConnection(socket, app) {
                 break;
             case 'smsdetail':
                 break;
+
             default:
                 console.log(user.username + ' - ' + JSON.stringify(data));
         }
@@ -1923,14 +2017,27 @@ setInterval(function() {
         avgNetworkPerformanceData = {};
     });
 
+    saveSMesResult();
+}, 1000 * 60 * 5); // 5' 1 lần
 
+function saveSMesResult() {
     // TODO: đoạn này lưu lại phản hồi của user về popup nữa, trước khi cập nhật lại từ DB
     // -> cập nhật từ DB về mới nhất, rồi mới ghi lại ngay vào DB, kẻo mất thông tin do ng dùng cập nhật
-    // gpResult xxxxxxxxx
-    // gpResult[id][sindex][ev]++;
 
-    var updateGPAsycn = {
-        query: function(item, callback) { // fbkey: feedbackkey
+    // gpResult[id][sindex][ev]++;
+    console.log(getTimeStamp() + ' saveSMesResult');
+
+    // ### 1. Ghi lại gpResult
+    {
+        var keys = Object.keys(gpResult);
+        keys = keys.map(function(key) {
+            return {
+                id: key,
+                data: gpResult[key] // -> object
+            };
+        });
+        for (var i = 0; i < keys.length; i++) {
+            var item = keys[i];
             // item.data = {"clickButtonBanner":12, "clickButtonCard":1}
             // $inc: {
             //     "result.0.closeBanner": 12,
@@ -1942,8 +2049,10 @@ setInterval(function() {
             // }
             GreetingPopup.update({ _id: item.id }, { $inc: item.data }, function(err, res) {
                 // callback(err, res);
-                if (err)
+                if (err) {
                     console.log("GreetingPopup.update err: " + JSON.stringify(err));
+                    console.log(item);
+                }
             });
 
             SMessage.update({ _id: item.id }, { $inc: item.data }, function(err, res) {
@@ -1955,43 +2064,84 @@ setInterval(function() {
                 if (err)
                     console.log("Type10Popup.update err: " + JSON.stringify(err));
             });
-        }
-    };
-    var keys = Object.keys(gpResult);
-    keys = keys.map(function(key) {
-        return {
-            id: key,
-            data: gpResult[key] // -> object
+
         };
-    });
-    async.map(keys, updateGPAsycn.query.bind(updateGPAsycn), function(err, result) {
-        if (err) {
-            console.log("updateGPAsycn err " + JSON.stringify(err));
-            return;
-        }
         // ko cần quan tâm result
         // clear lại bộ đếm tương tác
         gpResult = {};
+    }
 
-        // sau khi có dữ liệu đủ, mình cập nhật lại gp mới, vì đã có thể thêm hoặc xóa gp rồi.
-        GreetingPopup.find({})
-            .lean().exec(function(err, docs) {
-                greetingPopups = format_sMes(docs, err);
+    // ### 2. Ghi lại uaResult
+    {
+        var keys = Object.keys(uaResult);
+        keys = keys.map(function(key) {
+            return {
+                event: key,
+                data: uaResult[key] // -> object
+            };
+        });
+        for (var i = 0; i < keys.length; i++) {
+            var item = keys[i];
+            // item.data = {"clickButtonBanner":12, "clickButtonCard":1}
+            // $inc: {
+            //     "result.0.closeBanner": 12,
+            //     "result.0.clickButtonIAP": 2,
+            //     "result.0.clickButtonCard": 6,
+            //     "result.1.closeBanner": 12,
+            //     "result.1.clickButtonIAP": 2,
+            //     "result.1.clickButtonCard": 6
+            // }
+            UAResult.update({ event: item.event }, { $inc: item.data }, function(err, res) {
+                // callback(err, res);
+                if (err) {
+                    console.log("UAResult.update err: " + JSON.stringify(err));
+                    console.log(item);
+                }
             });
 
-        // cập nhật lại sMes list
-        SMessage.find({})
-            .lean().exec(function(err, docs) {
-                sMes = format_sMes(docs, err);
-            });
+        };
+        // ko cần quan tâm result
+        // clear lại bộ đếm tương tác
+        uaResult = {};
+    }
 
-        Type10Popup.find({})
-            .lean().exec(function(err, docs) {
-                type10Popups = format_sMes(docs, err);
-            });
+    // sau khi có dữ liệu đủ, mình cập nhật lại gp mới, vì đã có thể thêm hoặc xóa gp rồi.
+    async.map([SMessage, GreetingPopup, Type10Popup], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
+        if (err) {
+            res.send(JSON.stringify(err, null, 3));
+            return;
+        }
+
+        var data = result[0].concat(result[1]).concat(result[2]);
+        // vì type10 được sử dụng thường xuyên nên mình format luôn
+        sMesData0 = data.filter(function(item) {
+            if (!_.has(item, 'showType'))
+                item.showType = 0; // hiện lúc login
+
+            return item.showType == 0;
+        });
+
+        sMesData1 = data.filter(function(item) {
+            if (!_.has(item, 'showType'))
+                item.showType = 0; // hiện lúc hết tiền
+
+            return item.showType == 1;
+        });
+
+        sMesData2 = data.filter(function(item) {
+            if (!_.has(item, 'showType'))
+                item.showType = 0; // hiện lúc thay đổi vip
+
+            return item.showType == 2;
+        });
+
+
+        sMesData0 = format_sMes(sMesData0);
+        sMesData1 = format_sMes(sMesData1);
+        sMesData2 = format_sMes(sMesData2);
+
     });
-
-}, 1000 * 60 * 5); // 5' 1 lần
+}
 
 function analyze_ccu(ccus_input, config, type, lastRecordsCCUS) {
     var ccus = _.cloneDeep(ccus_input);

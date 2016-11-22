@@ -104,6 +104,115 @@
                 startLoadingTime = moment();
             }
 
+            function getBanner(option, onSuccess) { //( type10 popup)
+                console.log(getTimeStamp() + " ----> request Banner data: " + JSON.stringify(option));
+                // socket.emit("tk.loginData", option); // tk: tracker
+                $http.post('/getBanner', option, {}).then(function successCallBack(response) {
+                    if (response.data.error != null) {
+                        alert('Banner data ' + JSON.stringify(response.data.error));
+                    }
+
+                    var jsondata = response.data;
+                    console.log(getTimeStamp() + " <---- response Banner data");
+                    var duration = moment.duration(moment().diff(startLoadingTime)).asSeconds();
+                    $rootScope.$broadcast('response', {
+                        status: 'done',
+                        duration: duration
+                    });
+                    onSuccess(jsondata);
+                }, function errorCallback(error) {
+                    console.log(getTimeStamp() + " <---- response Banner error: " + error);
+                    $rootScope.$broadcast('response', {
+                        status: 'error',
+                        error: error,
+                        duration: duration
+                    });
+                });
+                startLoadingTime = moment();
+            }
+
+            function saveBanner(option, onSuccess) { //( type10 popup)
+                console.log(getTimeStamp() + " ----> request save Banner data: " + JSON.stringify(option));
+                // socket.emit("tk.loginData", option); // tk: tracker
+                $http.post('/saveBanner', option, {}).then(function successCallBack(response) {
+                    if (response.data.error != null) {
+                        alert('save Banner data ' + JSON.stringify(response.data.error));
+                    }
+
+                    var jsondata = response.data;
+                    console.log(getTimeStamp() + " <---- response save Banner data");
+                    var duration = moment.duration(moment().diff(startLoadingTime)).asSeconds();
+                    $rootScope.$broadcast('response', {
+                        status: 'done',
+                        duration: duration
+                    });
+                    onSuccess(jsondata);
+                }, function errorCallback(error) {
+                    console.log(getTimeStamp() + " <---- response save Banner error: " + error);
+                    $rootScope.$broadcast('response', {
+                        status: 'error',
+                        error: error,
+                        duration: duration
+                    });
+                });
+                startLoadingTime = moment();
+            }
+
+            function createBanner(option, onSuccess) { //( type10 popup)
+                console.log(getTimeStamp() + " ----> request createBanner data: " + JSON.stringify(option));
+                // socket.emit("tk.loginData", option); // tk: tracker
+                $http.post('/createBanner', option, {}).then(function successCallBack(response) {
+                    if (response.data.error != null) {
+                        alert('createBanner data ' + JSON.stringify(response.data.error));
+                    }
+
+                    var jsondata = response.data;
+                    console.log(getTimeStamp() + " <---- response createBanner data");
+                    var duration = moment.duration(moment().diff(startLoadingTime)).asSeconds();
+                    $rootScope.$broadcast('response', {
+                        status: 'done',
+                        duration: duration
+                    });
+                    onSuccess(jsondata);
+                }, function errorCallback(error) {
+                    console.log(getTimeStamp() + " <---- response createBanner error: " + error);
+                    $rootScope.$broadcast('response', {
+                        status: 'error',
+                        error: error,
+                        duration: duration
+                    });
+                });
+                startLoadingTime = moment();
+            }
+
+            function sendTestBanner(option, onSuccess) { //( type10 popup)
+                console.log(getTimeStamp() + " ----> request sendTestBanner: " + JSON.stringify(option));
+                // socket.emit("tk.loginData", option); // tk: tracker
+                $http.post('http://nguyenhaian.com:3000/testevent', option, {}).then(function successCallBack(response) {
+                    if (response.data.error != null) {
+                        alert('save Banner data ' + JSON.stringify(response.data.error));
+                    }
+
+                    var jsondata = response.data;
+                    console.log(getTimeStamp() + " <---- response sendTestBanner");
+                    var duration = moment.duration(moment().diff(startLoadingTime)).asSeconds();
+                    $rootScope.$broadcast('response', {
+                        status: 'done',
+                        duration: duration
+                    });
+                    onSuccess(jsondata);
+                }, function errorCallback(error) {
+                    console.log(getTimeStamp() + " <---- response sendTestBanner error: " + error);
+                    $rootScope.$broadcast('response', {
+                        status: 'error',
+                        error: error,
+                        duration: duration
+                    });
+                });
+                startLoadingTime = moment();
+            }
+
+
             socket.on("mobile_reginfo", function(data) {
                 console.log("<---- mobile_reginfo ");
             });
@@ -188,7 +297,11 @@
                 // },
                 timelineData: timelineData,
                 loginData: loginData,
-                getGrettingPopup: getGrettingPopup
+                getGrettingPopup: getGrettingPopup,
+                getBanner: getBanner,
+                saveBanner: saveBanner,
+                sendTestBanner: sendTestBanner,
+                createBanner: createBanner
             };
         }]);
 })();

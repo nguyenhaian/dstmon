@@ -7,7 +7,7 @@ for (var i = iplist.length - 1; i >= 0; i--) {
 };
 
 // var ipExcepts = '192.168.1.1;';
-var ipExcepts = '';
+var ipExcepts = '123.16.237.205';
 
 
 // http://stackoverflow.com/questions/20303690/match-ip-with-a-range-stored-in-an-array

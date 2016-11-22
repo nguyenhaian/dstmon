@@ -24,7 +24,9 @@
 
 <body>
     <div>
+    <a href="/performancereport/month">month</a>
     <a href="/performancereport/week">week</a>
+    <a href="/performancereport/2day">2day</a>
     <a href="/performancereport/day">day</a>
     <a href="/performancereport/12h">12h</a>
     <a href="/performancereport/6h">6h</a>
@@ -35,6 +37,7 @@
     <svg id="svg-app" width="420" height="500"></svg>
     <svg id="svg-ip" width="420" height="500"></svg>
     <svg id="svg-login" width="420" height="500"></svg>
+    <svg id="svg-all" width="420" height="500"></svg>
     <pre id="ccu"><%= rccu %></pre>
 </body>
 <script>
@@ -223,6 +226,22 @@ var angles_login = angle_names.filter(function(id){
   return id.startsWith('ip.0_0_0_0');
 }).map(anglemap);
 
+var lineCountOfApp = angles_app.length;
+var angles_all = 
+    [{
+        id: 'all ccu',
+        values: angles_app[0].values.map(function(item, index){
+            var count = 0;
+            for (var i = lineCountOfApp - 1; i >= 0; i--) {
+                count += angles_app[i].values[index].count; 
+            };
+            return {
+                date: item.date,
+                count: count
+            }
+        })
+    }];
+
 var xdomain = d3.extent(data, function(d) {
     return d.date;
 });
@@ -230,6 +249,7 @@ var xdomain = d3.extent(data, function(d) {
 drawGraph("#svg-app", xdomain, angles_app);
 drawGraph("#svg-ip", xdomain, angles_ip);
 drawGraph("#svg-login", xdomain, angles_login);
+drawGraph("#svg-all", xdomain, angles_all);
 
 const ordered = {};
 Object.keys(ccus).sort(function(a,b){
