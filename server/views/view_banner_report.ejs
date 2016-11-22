@@ -1,0 +1,144 @@
+<!-- 'type10': format_sMes(result[2]),
+'type5': format_sMes(result[1]),
+'sMes': format_sMes(result[0]) -->
+
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+table {
+    font-family: arial, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+td, th {
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 8px;
+}
+
+tr:nth-child(even) {
+    background-color: #dddddd;
+}
+</style>
+</head>
+<body>
+
+<div><h4>date: <%= date %></h4></div>
+<div>
+<table>
+   <tr>
+      <th>STT</th>
+      <th>Date</th>
+      <th>id</th>
+      <!-- <th>title</th> -->
+      <th>showType</th>
+      <th>type</th>
+      <th>priority</th>
+      <th>os</th>
+      <th>Vip</th>
+      <th>LQ</th>
+      <th>AG</th>
+      <!-- <th>url</th> -->
+      <th>totalValue</th>
+      <th>closeBanner</th>
+      <th>clickButtonBanner</th>
+      <th>clickButtonIAP</th>
+      <th>clickButtonSms</th>
+      <th>clickButtonCard</th>
+      <th>clickButonViewAd</th>
+      <th>clickButtonShowPayment</th>
+      <th>clickButtonHaveNothing</th>
+      <th>clickButtonOpenUrl</th>
+      <th>clickButtonOpenShare</th>
+   </tr>
+
+   <% for (var i = 0; i < type10.length;  i++) { %>
+    <tr>
+      <td><%= i %></td>
+      <td><%= type10[i].date %></td>
+      <td><%= type10[i].id %></td>
+      <!-- <td><%= type10[i].title %></td> -->
+      <td><%= type10[i].showType %></td>
+      <td><%= type10[i].type %></td>
+      <td><%= type10[i].priority %></td>
+      <td><%= type10[i].os %></td>
+      <td><%= type10[i].Vip %></td>
+      <td><%= type10[i].LQ %></td>
+      <td><%= type10[i].AG %></td>
+      <!-- <td><%= lodash.replace(type10[i].url, /;/g, " ") %></td> -->
+      <td><%= type10[i].totalValue %></td>
+      <td><%= type10[i].closeBanner %></td>
+      <td><%= type10[i].clickButtonBanner %></td>
+      <td><%= type10[i].clickButtonIAP %></td>
+      <td><%= type10[i].clickButtonSms %></td>
+      <td><%= type10[i].clickButtonCard %></td>
+      <td><%= type10[i].clickButonViewAd %></td>
+      <td><%= type10[i].clickButtonShowPayment %></td>
+      <td><%= type10[i].clickButtonHaveNothing %></td>
+      <td><%= type10[i].clickButtonOpenUrl %></td>
+      <td><%= type10[i].clickButtonOpenShare %></td>
+    </tr>    
+   <% } %>
+</table>
+</div>
+<div>
+<table>
+   <tr>
+      <th>STT</th>
+      <th>Date</th>
+      <th>id</th>
+      <!-- <th>title</th> -->
+      <th>showType</th>
+      <th>type</th>
+      <th>priority</th>
+      <th>os</th>
+      <th>Vip</th>
+      <th>LQ</th>
+      <th>AG</th>
+      <!-- <th>url</th> -->
+      <th>totalValue</th>
+      <th>closeBanner</th>
+      <th>clickButtonBanner</th>
+      <th>clickButtonIAP</th>
+      <th>clickButtonSms</th>
+      <th>clickButtonCard</th>
+      <th>clickButonViewAd</th>
+      <th>clickButtonShowPayment</th>
+      <th>clickButtonHaveNothing</th>
+      <th>clickButtonOpenUrl</th>
+      <th>clickButtonOpenShare</th>
+   </tr>
+
+   <% for (var i = 0; i < type5.length;  i++) { %>
+    <tr>
+      <td><%= i %></td>
+      <td><%= type5[i].date %></td>
+      <td><%= type5[i].id %></td>
+      <!-- <td><%= type5[i].title %></td> -->
+      <td><%= type5[i].showType %></td>
+      <td><%= type5[i].type %></td>
+      <td><%= type5[i].priority %></td>
+      <td><%= type5[i].os %></td>
+      <td><%= type5[i].Vip %></td>
+      <td><%= type5[i].LQ %></td>
+      <td><%= type5[i].AG %></td>
+      <!-- <td><%= lodash.replace(type5[i].url, /;/g, " ") %></td> -->
+      <td><%= type5[i].totalValue %></td>
+      <td><%= type5[i].closeBanner %></td>
+      <td><%= type5[i].clickButtonBanner %></td>
+      <td><%= type5[i].clickButtonIAP %></td>
+      <td><%= type5[i].clickButtonSms %></td>
+      <td><%= type5[i].clickButtonCard %></td>
+      <td><%= type5[i].clickButonViewAd %></td>
+      <td><%= type5[i].clickButtonShowPayment %></td>
+      <td><%= type5[i].clickButtonHaveNothing %></td>
+      <td><%= type5[i].clickButtonOpenUrl %></td>
+      <td><%= type5[i].clickButtonOpenShare %></td>
+    </tr>    
+   <% } %>
+</table>
+</div>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<div class="row panel-body">
+    <div class="col-lg-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-bar-chart-o fa-fw"></i> Target: <b>{{target.selectedApp}}</b>
+                <a href ng-click="getBanner()">
+                    <i ng-class="inloading ? 'fa fa-refresh fa-spin fa-fw' :'fa fa-refresh fa-fw'"></i> load from db</a>
+                <!-- or
+                <a href ng-click="uploadPendingMessage()">
+                    <i class="fa fa-upload" aria-hidden="true"></i> upload .csv</a> -->
+                <div class="pull-right">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                            {{target.selectedApp}}
+                            <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu pull-right" role="menu">
+                            <!-- <li ng-repeat-start="group in target.groups"><a href ng-click="target.selectedGroup = $index; target.selectedApp = -1"><b>{{group.groupname}}</b></a></li> -->
+                            <li ng-repeat="app in target.apps"><a href ng-click="target.selectedApp = app">{{app}}</a></li>
+                            <!-- <li ng-repeat-end role="separator" class="divider"></li> -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-heading form-group">
+                <label>Advanced query</label>
+                <button ng-click="query(queryCommand, querySelect, queryLimit)"><i class="fa fa-play" aria-hidden="true"></i></button>
+                <div class="input-group">
+                    <span class="input-group-addon">Query</span>
+                    <textarea class="form-control code" rows="1" id="command" ng-model='queryCommand'></textarea>
+                </div>
+                <div class="input-group">
+                    <span class="input-group-addon">Select</span>
+                    <textarea class="form-control code" rows="1" ng-model='querySelect'></textarea>
+                </div>
+                <div class="input-group">
+                    <span class="input-group-addon">Limit</span>
+                    <textarea class="form-control code" rows="1" ng-model='queryLimit'></textarea>
+                </div>
+                <div class="input-group">
+                    <span class="input-group-addon">TestUser</span>
+                    <textarea class="form-control code" rows="1" ng-model='queryTestUser'></textarea>
+                </div>
+            </div>
+            <div class="panel-body">
+                <table class="tbbanner">
+                    <!-- <tr class='row' ng-repeat="noti in result">
+                        <td width="5">{{$index+1}}
+                        </td>
+                        <td width="490">
+                            <canvas id="canvas_{{noti._id}}" width="{{468+20}}" height="{{300+20}}" style="border:0px solid #d3d3d3;">
+                                Your browser does not support the HTML5 canvas tag.
+                            </canvas>
+                            {{preview(noti, $index)}}
+                        </td>
+                        <td>
+                            <textarea id="ta_{{noti._id}}" rows="4" cols="50" height="100%" width="100%">{{getjson(noti)}}</textarea>
+                            <div class="gbound">
+                                <div class="gbutton">
+                                    <button class="b1" ng-click="applyright(noti)">>>></button>
+                                    <button class="b2" ng-click="applyleft(noti)">
+                                        <<<</button>
+                                            <button ng-click="save_banner(noti)">save</button>
+                                            <button ng-click="restore_banner(noti)">restore</button>
+                                            <button ng-click="delete_banner(noti)">delete</button>
+                                </div>
+                                <div class="gbutton-c">
+                                    <button> <b><a href ng-click="">{{noti._id}}</a></b></button>
+                                </div>
+                                <div class="gbutton-r">
+                                    <button><a href ng-click="">test</a></button>
+                                </div>
+                            </div>
+                            {{initCodeMirror(noti, $index)}}
+                        </td>
+                        {{out(noti._id)}}
+                    </tr> -->
+                </table>
+                <br>
+                <button type="button" class="btn btn-danger pull-right" ng-click="createBanner()">Add</button>
+            </div>
+        </div>
+        <!--
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <i class="fa fa-bar-chart-o fa-fw"></i> Last sent messages (top last {{sentnotifications.length}} mgs)
+                <a href ng-click="loadLastSentMsg()">
+                    <i ng-class="viewangle.loading ? 'fa fa-refresh fa-spin fa-fw' :'fa fa-refresh fa-fw'"></i> refresh from db</a>
+            </div>
+            <div class="panel-body">
+                
+            </div>
+        </div>
+        -->
+    </div>
+</div>
