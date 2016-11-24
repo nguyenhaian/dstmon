@@ -5,10 +5,17 @@
         .module('chartApp')
         .controller('GPopupController', GPopupController);
 
-    GPopupController.$inject = ['$scope', '$http', '$timeout', 'socket'];
+    GPopupController.$inject = ['$scope', '$http', '$timeout', 'socket', '$compile'];
 
-    function GPopupController($scope, $http, $timeout, socket) {
+    function formatImageUrl(url) {
+        var url_s = url.split(";");
+        url_s = url_s.filter(function(d) {
+            return (/\S/.test(d));
+        });
+        return url_s;
+    }
 
+    function GPopupController($scope, $http, $timeout, socket, $compile) {
         // init
         $scope.inloading = false;
         $scope.target = {
@@ -16,7 +23,10 @@
         };
         $scope.target.selectedApp = $scope.target.apps[0];
 
-        $scope.data = {};
+        var $tbbanner = $('.tbbanner');
+
+        $scope.inloading = false;
+        $scope.result = {};
         $scope.loadstatus = {};
 
         $scope.noti = {
@@ -35,14 +45,225 @@
             }
         };
 
-        $scope.getGP = function() {
+        var $command_ta = $('#command');
+        autosize($command_ta);
+
+        $scope.queryCommand = JSON.stringify({ app: $scope.target.selectedApp });
+        $scope.querySelect = '-result';
+        $scope.queryLimit = 10;
+
+        $scope.setSelectedApp = function(app) {
+            $scope.target.selectedApp = app;
+            var command = $scope.queryCommand;
+            try {
+                var jsoncommand = JSON.parse(command);
+                jsoncommand.app = app;
+                $scope.queryCommand = JSON.stringify(jsoncommand);
+            } catch (e) {
+                if (!command || command.length < 3) {
+                    $scope.queryCommand = JSON.stringify({ app: $scope.target.selectedApp });
+                    $scope.querySelect = '-result';
+                    $scope.limit = 10;
+                }
+                alert(e);
+            }
+        }
+
+        $scope.query = function(command, select, limit) {
+            try {
+                $scope.getGP(JSON.parse(command), select, JSON.parse(limit));
+            } catch (e) {
+                if (!command || command.length < 3) {
+                    $scope.queryCommand = JSON.stringify({ app: $scope.target.selectedApp });
+                    $scope.querySelect = '-result';
+                    $scope.limit = 10;
+                }
+                alert(e);
+            }
+
+        };
+
+        $scope.addGP = function(index) {
+            // $timeout(function() { // simulate getting template
+            var template = `<tr class='row' ng-model='result[${index}]'>
+                        {{out('OUT ************ ' + result[${index}]._id)}}
+                        <td width='5'>{{${index+1}}}
+                        </td>
+                        <td width='490'>
+                            <canvas id='canvas_{{result[${index}]._id}}' width='{{468+20}}' height='{{300+20}}' style='border:0px solid #d3d3d3;'>
+                                Your browser does not support the HTML5 canvas tag.
+                            </canvas>
+                        </td>
+                        <td>
+                            <textarea id='ta_{{result[${index}]._id}}' rows='4' cols='50' height='100%' width='100%'>{{getjson(result[${index}])}}</textarea>
+                            <div class='gbound'>
+                                <div class='gbutton'>
+                                    <button class='b1' ng-click='applyright(result[${index}])'>>>></button>
+                                    <button class='b2' ng-click='applyleft(result[${index}])'><<<</button>
+                                    <button ng-click='save_gp(result[${index}])'><i class="fa fa-floppy-o" aria-hidden="true"></i></button>
+                                    <button ng-click='restore_gp(result[${index}])'><i class="fa fa-undo" aria-hidden="true"></i></i></button>
+                                    <button ng-click='delete_gp(result[${index}], ${index})'><i class="fa fa-trash-o" aria-hidden="true"></i></button>
+                                </div>
+                                <div class='gbutton-c'>
+                                    <button ng-click='expand_editbox(result[${index}])'><i class="fa fa-expand" aria-hidden="true"></i></i></button>
+                                    <button ng-click='colapse_editbox(result[${index}])'><i class="fa fa-compress" aria-hidden="true"></i></button>
+                                    <label> <b>{{result[${index}]._id}}</b></label>
+                                    <a href="/getGP/{{result[${index}]._id}}"> detail</a>
+                                </div>
+                                <div class='gbutton-r'>
+                                    <button ng-click='sendTestBanner(result[${index}])'>test</button>
+                                </div>
+                            </div>
+                        </td>
+
+                        
+                    </tr>`;
+
+            var compiledeHTML = $compile(template)($scope);
+            $tbbanner.append(compiledeHTML);
+
+            $timeout(function() {
+                $scope.preview($scope.result[index]);
+                $scope.initCodeMirror($scope.result[index]);
+            });
+        };
+
+        $scope.getGP = function(query, select, limit) {
+            if (!query) {
+                query = { app: $scope.target.selectedApp };
+            }
+
+            // phải empty view trước, nếu ko thì model result sẽ cập nhật lại tbBanner gây lỗi.
+            $tbbanner.empty();
             $scope.inloading = true;
-            socket.getGrettingPopup({ app: $scope.target.selectedApp }, function onSuccess(data) {
-                // console.log("socket.getGrettingPopup");
+            $scope.result = {};
+            $scope.loadstatus = {};
+
+            socket.getGP({ query: query, selectOption: select, limit: limit }, function onSuccess(data) {
+                if (data.err) {
+                    alert(JSON.stringify(err));
+                    return;
+                }
+
                 console.log(data);
-                $scope.data = data;
+                $scope.result = data.data; //.slice(0, 10);
+
+                _.forEach($scope.result, function(item, index) {
+                    $scope.addGP(index);
+                });
             });
         }
+
+        $scope.restore_gp = function(item) {
+            $scope.inloading = true;
+            // delete $scope.loadstatus[item._id]; // mình ko xóa đi mà chỉ init lại content mà thôi
+
+            socket.getGP({ query: { _id: item._id }, selectOption: '-result', limit: 1 }, function onSuccess(data) {
+                if (data.err) {
+                    alert(JSON.stringify(err));
+                    return;
+                }
+                console.log(data);
+
+                // update scope.result
+                var item_update = data.data[0];
+                $scope.loadstatus[item._id].editor.getDoc().setValue($scope.getjson(item_update));
+
+                // bước update này cũng ko thật cần thiết.
+                for (var i = $scope.result.length - 1; i >= 0; i--) {
+                    if ($scope.result[i]._id == item_update._id) {
+                        $scope.result[i] = item_update;
+                        break;
+                    }
+                };
+            });
+        }
+
+        $scope.save_gp = function(item) {
+            var data = $scope.loadstatus[item._id].editor.getValue();
+            $scope.inloading = true;
+
+            try {
+                data = JSON.parse(data);
+            } catch (e) {
+                alert(JSON.stringify(e));
+                return;
+            }
+
+            socket.saveGP({ _id: item._id, data: data }, function onSuccess(data) {
+                if (data.err) {
+                    alert(JSON.stringify(err));
+                    return;
+                }
+                // console.log(data);
+                alert(JSON.stringify(data));
+
+                $scope.restore_banner(item);
+            });
+        }
+
+        $scope.delete_gp = function(item, index) {
+            $scope.inloading = true;
+
+            socket.deleteGP({ _id: item._id }, function onSuccess(data) {
+                if (data.err) {
+                    alert(JSON.stringify(err));
+                    return;
+                }
+                console.log(data);
+                // alert(JSON.stringify(data));
+                $scope.result.splice(index, 1);
+                $('#canvas_' + item._id).closest('.row').remove();
+            });
+        }
+
+        $scope.sendTestBanner = function(item) {
+            var data = $scope.loadstatus[item._id].editor.getValue();
+            $scope.inloading = true;
+
+            try {
+                data = JSON.parse(data);
+                if (_.has(data, 'result'))
+                    delete data.result;
+                var urls = data.url.split(";");
+                urls = urls.filter(function(d) {
+                    return (/\S/.test(d));
+                });
+                data.url = urls[0];
+            } catch (e) {
+                alert(JSON.stringify(e));
+                return;
+            }
+
+            socket.sendTestBanner({ event: "news", name: $scope.queryTestUser, data: [data] }, function onSuccess(data) {
+                if (data.err) {
+                    alert(JSON.stringify(err));
+                    return;
+                }
+                // console.log(data);
+                alert(JSON.stringify(data));
+            });
+        }
+
+        $scope.createGP = function() {
+            $scope.inloading = true;
+
+            socket.createGP({ app: $scope.target.selectedApp }, function onSuccess(data) {
+                if (data.err) {
+                    alert(JSON.stringify(err));
+                    return;
+                }
+                console.log(data);
+                // alert(JSON.stringify(data));
+                $scope.result.push(data.data); //.slice(0, 10);
+                $scope.addGP($scope.result.length - 1);
+            });
+        }
+
+        $scope.out = function(str) {
+            console.log(str);
+        }
+
         $scope.jsontostring = function(obj) {
             return JSON.stringify(obj, null, 3)
         }
@@ -50,13 +271,19 @@
             return angular.toJson(obj, true);
         }
         $scope.getjson = function(obj) {
-            var json = _.cloneDeep(obj);
-            delete json._id;
-            // return obj;
-            return angular.toJson(json, true);
+            try {
+                var json = _.cloneDeep(obj);
+                delete json._id;
+                delete json.result;
+                // return obj;
+                return angular.toJson(json, true);
+            } catch (e) {
+                return '';
+            }
         }
         $scope.applyleft = function(item) {}
         $scope.applyright = function(item) {
+            return;
             if ($scope.loadstatus[item._id].btn) {
                 var btn = $scope.loadstatus[item._id].btn;
                 var _w = btn.width * 300 / (570 + 20), // 20 là gia vị thoi
@@ -84,9 +311,13 @@
                 var myTextArea = document.querySelector("#ta_" + item._id);
                 // console.log(myTextArea.value);
                 var editor = CodeMirror.fromTextArea(myTextArea, {
-                    lineNumbers: false
+                    lineNumbers: false,
+                    mode: "javascript"
                 });
+
+                $scope.loadstatus[item._id].editor = editor;
             }
+
             var width = $('.panel-heading').width() - 30;
             $('.CodeMirror').width(width - 510);
 
@@ -107,7 +338,7 @@
                 canvas.setHeight(300 + 20);
                 canvas.setWidth(468 + 20);
 
-                fabric.Image.fromURL(item.url, function(oImg) {
+                fabric.Image.fromURL(formatImageUrl(item.url)[0], function(oImg) {
 
                     oImg.selectable = false;
                     oImg.setHeight(300);
@@ -116,6 +347,8 @@
                     oImg.setTop(10);
 
                     canvas.add(oImg);
+
+                    oImg.moveTo(0);
                 });
 
                 fabric.Image.fromURL("/assets/close.png", function(oImg) {
@@ -126,114 +359,78 @@
                     oImg.setTop(0);
 
                     canvas.add(oImg);
+                    oImg.moveTo(1);
                 });
 
-                fabric.Image.fromURL(item.urlBtn, function(oImg) {
-                    // oImg.selectable = false;
-                    var _w = oImg.width * 300 / (570 + 20), // 20 là gia vị thoi
-                        _h = oImg.height * 300 / (570 + 20),
-                        _x = item.pos.x,
-                        _y = item.pos.y;
 
-                    _x = (_x + 0.5) * canvas.width - _w / 2;
-                    _y = (-_y + 0.5) * canvas.height - _h / 2;
-                    oImg.setHeight(_h);
-                    oImg.setWidth(_w);
-                    oImg.setLeft(_x);
-                    oImg.setTop(_y);
+                _.forEach(item.arrUrlBtn, function(btnItem, index) {
+                    fabric.Image.fromURL(btnItem, function(oImg) {
+                        // oImg.selectable = false;
+                        var a = 40;
+                        var _w = oImg.width * 300 / (570 + a), // 20 là gia vị thoi
+                            _h = oImg.height * 300 / (570 + a), // 570 là kích thước thật của ảnh.
+                            _x = item.arrPos[index].x,
+                            _y = item.arrPos[index].y;
 
-                    canvas.add(oImg);
+                        _x = (_x + 0.5) * canvas.width * 0.9 - _w / 2 + canvas.width * 0.05;
+                        _y = (-_y + 0.5) * canvas.height * 0.9 - _h / 2;
+                        oImg.setHeight(_h);
+                        oImg.setWidth(_w);
+                        oImg.setLeft(_x);
+                        oImg.setTop(_y);
 
-                    $scope.loadstatus[item._id].btn = oImg;
+                        canvas.add(oImg);
+                        oImg.moveTo(1 + index);
+
+                        $scope.loadstatus[item._id].btn = oImg;
+
+                    });
                 });
 
-                return;
-                var myCanvas = document.getElementById("canvas_" + item._id);
-                var ctx = myCanvas.getContext("2d");
+                // fabric.Image.fromURL(item.url, function(oImg) {
 
-                // 890 x 570 -> 468 x 300
-                var img = new Image();
-                img.onload = function() {
-                    ctx.drawImage(img, 10, 10, 468, 300); // Or at whatever offset you like
-                };
-                img.src = item.url;
+                //     oImg.selectable = false;
+                //     oImg.setHeight(300);
+                //     oImg.setWidth(468);
+                //     oImg.setLeft(10);
+                //     oImg.setTop(10);
 
-                var imgclose = new Image();
-                imgclose.onload = function() {
-                    ctx.drawImage(imgclose, myCanvas.width - 24, 0, 24, 24); // Or at whatever offset you like
-                };
-                imgclose.src = "/assets/close.png";
+                //     canvas.add(oImg);
 
-                // 289 x 85 -> 152 x 45
-                var imgOpt1 = new Image();
-                imgOpt1.onload = function() {
-                    var _w = 152,
-                        _h = 45,
-                        _x = item.pos.x,
-                        _y = item.pos.y;
+                //     oImg.moveTo(0);
+                // });
 
-                    _x = (_x + 0.5) * myCanvas.width - _w / 2;
-                    _y = (-_y + 0.5) * myCanvas.height - _h / 2;
-                    // vì tọa độ ở đây bị ngược so với design, nên phải convert hơi cực xíu
-                    // ko giống nhau giữa x và y
-                    ctx.drawImage(imgOpt1, _x, _y, _w, _h); // Or at whatever offset you like
-                };
-                imgOpt1.src = item.urlBtn;
+                // fabric.Image.fromURL("/assets/close.png", function(oImg) {
+                //     oImg.selectable = false;
+                //     oImg.setHeight(24);
+                //     oImg.setWidth(24);
+                //     oImg.setLeft(canvas.width - 24);
+                //     oImg.setTop(0);
 
-                // var imgOpt2 = new Image();
-                // imgOpt2.onload = function() {
-                //     ctx.drawImage(imgOpt2, myCanvas.width-24, 0, 24, 24); // Or at whatever offset you like
-                // };
-                // imgOpt2.src = "/assets/close.png";
+                //     canvas.add(oImg);
 
-                var canvasOffset = $("#canvas_" + item._id).offset();
-                var offsetX = canvasOffset.left;
-                var offsetY = canvasOffset.top;
-                var canvasWidth = myCanvas.width;
-                var canvasHeight = myCanvas.height;
-                var isDragging = false;
+                //     oImg.moveTo(1);
+                // });
 
-                function handleMouseDown(e) {
-                    var canMouseX = parseInt(e.clientX - offsetX);
-                    var canMouseY = parseInt(e.clientY - offsetY);
-                    // set the drag flag
-                    isDragging = true;
-                    console.log("isDragging = true;");
-                }
+                // fabric.Image.fromURL(item.urlBtn, function(oImg) {
+                //     // oImg.selectable = false;
+                //     var _w = oImg.width * 300 / (570 + 20), // 20 là gia vị thoi
+                //         _h = oImg.height * 300 / (570 + 20),
+                //         _x = item.pos.x,
+                //         _y = item.pos.y;
 
-                function handleMouseUp(e) {
-                    var canMouseX = parseInt(e.clientX - offsetX);
-                    var canMouseY = parseInt(e.clientY - offsetY);
-                    // clear the drag flag
-                    isDragging = false;
-                    console.log("isDragging = false;");
-                }
+                //     _x = (_x + 0.5) * canvas.width - _w / 2;
+                //     _y = (-_y + 0.5) * canvas.height - _h / 2;
+                //     oImg.setHeight(_h);
+                //     oImg.setWidth(_w);
+                //     oImg.setLeft(_x);
+                //     oImg.setTop(_y);
 
-                function handleMouseOut(e) {
-                    var canMouseX = parseInt(e.clientX - offsetX);
-                    var canMouseY = parseInt(e.clientY - offsetY);
-                    // user has left the canvas, so clear the drag flag
-                    //isDragging=false;
+                //     canvas.add(oImg);
+                //     oImg.moveTo(1 + index);
 
-                    console.log("handleMouseOut");
-                }
-
-                function handleMouseMove(e) {
-                    var canMouseX = parseInt(e.clientX - offsetX);
-                    var canMouseY = parseInt(e.clientY - offsetY);
-                    // if the drag flag is set, clear the canvas and draw the image
-                    if (isDragging) {
-                        // ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-                        // ctx.drawImage(img, canMouseX - 128 / 2, canMouseY - 120 / 2, 128, 120);
-
-                    }
-                    console.log("handleMouseOut " + isDragging);
-                }
-
-                $("#canvas_" + item._id).mousedown(function(e) { handleMouseDown(e); });
-                $("#canvas_" + item._id).mousemove(function(e) { handleMouseMove(e); });
-                $("#canvas_" + item._id).mouseup(function(e) { handleMouseUp(e); });
-                $("#canvas_" + item._id).mouseout(function(e) { handleMouseOut(e); });
+                //     $scope.loadstatus[item._id].btn = oImg;
+                // });
             }
         }
 

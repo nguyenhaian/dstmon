@@ -115,7 +115,7 @@ var GreetingPopup = mongoose.model('GreetingPopup', {
     bonusIAP: Number,
     showPopup: Boolean,
     arrUrlBtn: [String],
-    arrPos: [{ Number, Number }],
+    arrPos: [],
     result: {
         //     {
         //     clickButtonBanner: Number,
@@ -156,7 +156,7 @@ var Type10Popup = mongoose.model('Type10Popup', {
     arrBonus: [Number],
     arrUrlBtn: [String],
     arrTypeBtn: [String],
-    arrPos: [{ Number, Number }],
+    arrPos: [],
     result: {}
 });
 
@@ -556,7 +556,7 @@ function sendNotifyToFriendsOfUser(user) {
 
                 var options = {
                     method: 'POST',
-                    url: 'http://203.162.121.174:3003/notify',
+                    url: 'http://203.162.166.99:3003/notify',
                     headers: {
                         'Content-Type': 'application/json'
                     },

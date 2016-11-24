@@ -99,6 +99,23 @@
         $scope.querySelect = '-result';
         $scope.queryLimit = 10;
 
+        $scope.setSelectedApp = function(app) {
+            $scope.target.selectedApp = app;
+            var command = $scope.queryCommand;
+            try {
+                var jsoncommand = JSON.parse(command);
+                jsoncommand.app = app;
+                $scope.queryCommand = JSON.stringify(jsoncommand);
+            } catch (e) {
+                if (!command || command.length < 3) {
+                    $scope.queryCommand = JSON.stringify({ app: $scope.target.selectedApp });
+                    $scope.querySelect = '-result';
+                    $scope.limit = 10;
+                }
+                alert(e);
+            }
+        }
+
         $scope.query = function(command, select, limit) {
             try {
                 $scope.getBanner(JSON.parse(command), select, JSON.parse(limit));
@@ -132,7 +149,7 @@
                                     <button class='b2' ng-click='applyleft(result[${index}])'><<<</button>
                                     <button ng-click='save_banner(result[${index}])'><i class="fa fa-floppy-o" aria-hidden="true"></i></button>
                                     <button ng-click='restore_banner(result[${index}])'><i class="fa fa-undo" aria-hidden="true"></i></i></button>
-                                    <button ng-click='delete_banner(result[${index}])'><i class="fa fa-trash-o" aria-hidden="true"></i></button>
+                                    <button ng-click='delete_banner(result[${index}], ${index})'><i class="fa fa-trash-o" aria-hidden="true"></i></button>
                                 </div>
                                 <div class='gbutton-c'>
                                     <button ng-click='expand_editbox(result[${index}])'><i class="fa fa-expand" aria-hidden="true"></i></i></button>
@@ -232,6 +249,21 @@
             });
         }
 
+        $scope.delete_banner = function(item, index) {
+            $scope.inloading = true;
+
+            socket.deleteBanner({ _id: item._id }, function onSuccess(data) {
+                if (data.err) {
+                    alert(JSON.stringify(err));
+                    return;
+                }
+                console.log(data);
+                // alert(JSON.stringify(data));
+                $scope.result.splice(index, 1);
+                $('#canvas_' + item._id).closest('.row').remove();
+            });
+        }
+
         $scope.sendTestBanner = function(item) {
             var data = $scope.loadstatus[item._id].editor.getValue();
             $scope.inloading = true;
@@ -300,6 +332,7 @@
         }
         $scope.applyleft = function(item) {}
         $scope.applyright = function(item) {
+            return;
             if ($scope.loadstatus[item._id].btn) {
                 var btn = $scope.loadstatus[item._id].btn;
                 var _w = btn.width * 300 / (570 + 20), // 20 là gia vị thoi
@@ -339,8 +372,6 @@
 
         }
         $scope.preview = function(item) {
-            console.log('****************** preview ******************');
-            console.log(item._id);
             if (!$scope.loadstatus[item._id]) $scope.loadstatus[item._id] = {};
             if (!$scope.loadstatus[item._id].hasload) { // to make sure this function call when we need it
                 $scope.loadstatus[item._id].hasload = true;

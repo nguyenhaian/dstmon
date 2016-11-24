@@ -77,16 +77,17 @@
                 startLoadingTime = moment();
             }
 
-            function getGrettingPopup(option, onSuccess) {
-                console.log(getTimeStamp() + " ----> request GrettingPopup data: " + JSON.stringify(option));
+            function xpost(url, option, onSuccess) {
+                console.log(getTimeStamp() + " ----> xpost url: " + url);
+                console.log(getTimeStamp() + " ----> xpost data: " + JSON.stringify(option));
                 // socket.emit("tk.loginData", option); // tk: tracker
-                $http.post('/getGP', option, {}).then(function successCallBack(response) {
+                $http.post(url, option, {}).then(function successCallBack(response) {
                     if (response.data.error != null) {
-                        alert('GrettingPopup data ' + JSON.stringify(response.data.error));
+                        alert('xpost data ' + JSON.stringify(response.data.error));
                     }
 
                     var jsondata = response.data;
-                    console.log(getTimeStamp() + " <---- response GrettingPopup data");
+                    console.log(getTimeStamp() + " <---- response xpost data");
                     var duration = moment.duration(moment().diff(startLoadingTime)).asSeconds();
                     $rootScope.$broadcast('response', {
                         status: 'done',
@@ -94,7 +95,7 @@
                     });
                     onSuccess(jsondata);
                 }, function errorCallback(error) {
-                    console.log(getTimeStamp() + " <---- response GrettingPopup error: " + error);
+                    console.log(getTimeStamp() + " <---- response xpost error: " + error);
                     $rootScope.$broadcast('response', {
                         status: 'error',
                         error: error,
@@ -103,115 +104,6 @@
                 });
                 startLoadingTime = moment();
             }
-
-            function getBanner(option, onSuccess) { //( type10 popup)
-                console.log(getTimeStamp() + " ----> request Banner data: " + JSON.stringify(option));
-                // socket.emit("tk.loginData", option); // tk: tracker
-                $http.post('/getBanner', option, {}).then(function successCallBack(response) {
-                    if (response.data.error != null) {
-                        alert('Banner data ' + JSON.stringify(response.data.error));
-                    }
-
-                    var jsondata = response.data;
-                    console.log(getTimeStamp() + " <---- response Banner data");
-                    var duration = moment.duration(moment().diff(startLoadingTime)).asSeconds();
-                    $rootScope.$broadcast('response', {
-                        status: 'done',
-                        duration: duration
-                    });
-                    onSuccess(jsondata);
-                }, function errorCallback(error) {
-                    console.log(getTimeStamp() + " <---- response Banner error: " + error);
-                    $rootScope.$broadcast('response', {
-                        status: 'error',
-                        error: error,
-                        duration: duration
-                    });
-                });
-                startLoadingTime = moment();
-            }
-
-            function saveBanner(option, onSuccess) { //( type10 popup)
-                console.log(getTimeStamp() + " ----> request save Banner data: " + JSON.stringify(option));
-                // socket.emit("tk.loginData", option); // tk: tracker
-                $http.post('/saveBanner', option, {}).then(function successCallBack(response) {
-                    if (response.data.error != null) {
-                        alert('save Banner data ' + JSON.stringify(response.data.error));
-                    }
-
-                    var jsondata = response.data;
-                    console.log(getTimeStamp() + " <---- response save Banner data");
-                    var duration = moment.duration(moment().diff(startLoadingTime)).asSeconds();
-                    $rootScope.$broadcast('response', {
-                        status: 'done',
-                        duration: duration
-                    });
-                    onSuccess(jsondata);
-                }, function errorCallback(error) {
-                    console.log(getTimeStamp() + " <---- response save Banner error: " + error);
-                    $rootScope.$broadcast('response', {
-                        status: 'error',
-                        error: error,
-                        duration: duration
-                    });
-                });
-                startLoadingTime = moment();
-            }
-
-            function createBanner(option, onSuccess) { //( type10 popup)
-                console.log(getTimeStamp() + " ----> request createBanner data: " + JSON.stringify(option));
-                // socket.emit("tk.loginData", option); // tk: tracker
-                $http.post('/createBanner', option, {}).then(function successCallBack(response) {
-                    if (response.data.error != null) {
-                        alert('createBanner data ' + JSON.stringify(response.data.error));
-                    }
-
-                    var jsondata = response.data;
-                    console.log(getTimeStamp() + " <---- response createBanner data");
-                    var duration = moment.duration(moment().diff(startLoadingTime)).asSeconds();
-                    $rootScope.$broadcast('response', {
-                        status: 'done',
-                        duration: duration
-                    });
-                    onSuccess(jsondata);
-                }, function errorCallback(error) {
-                    console.log(getTimeStamp() + " <---- response createBanner error: " + error);
-                    $rootScope.$broadcast('response', {
-                        status: 'error',
-                        error: error,
-                        duration: duration
-                    });
-                });
-                startLoadingTime = moment();
-            }
-
-            function sendTestBanner(option, onSuccess) { //( type10 popup)
-                console.log(getTimeStamp() + " ----> request sendTestBanner: " + JSON.stringify(option));
-                // socket.emit("tk.loginData", option); // tk: tracker
-                $http.post('http://nguyenhaian.com:3000/testevent', option, {}).then(function successCallBack(response) {
-                    if (response.data.error != null) {
-                        alert('save Banner data ' + JSON.stringify(response.data.error));
-                    }
-
-                    var jsondata = response.data;
-                    console.log(getTimeStamp() + " <---- response sendTestBanner");
-                    var duration = moment.duration(moment().diff(startLoadingTime)).asSeconds();
-                    $rootScope.$broadcast('response', {
-                        status: 'done',
-                        duration: duration
-                    });
-                    onSuccess(jsondata);
-                }, function errorCallback(error) {
-                    console.log(getTimeStamp() + " <---- response sendTestBanner error: " + error);
-                    $rootScope.$broadcast('response', {
-                        status: 'error',
-                        error: error,
-                        duration: duration
-                    });
-                });
-                startLoadingTime = moment();
-            }
-
 
             socket.on("mobile_reginfo", function(data) {
                 console.log("<---- mobile_reginfo ");
@@ -297,11 +189,33 @@
                 // },
                 timelineData: timelineData,
                 loginData: loginData,
-                getGrettingPopup: getGrettingPopup,
-                getBanner: getBanner,
-                saveBanner: saveBanner,
-                sendTestBanner: sendTestBanner,
-                createBanner: createBanner
+                getGP: function(option, onSuccess) {
+                    xpost('/getGP', option, onSuccess);
+                },
+                saveGP: function(option, onSuccess) {
+                    xpost('/saveGP', option, onSuccess);
+                },
+                createGP: function(option, onSuccess) {
+                    xpost('/createGP', option, onSuccess);
+                },
+                deleteGP: function(option, onSuccess){
+                    xpost('/deleteGP', option, onSuccess);
+                },
+                getBanner: function(option, onSuccess) {
+                    xpost('/getBanner', option, onSuccess);
+                },
+                saveBanner: function(option, onSuccess) {
+                    xpost('/saveBanner', option, onSuccess);
+                },
+                createBanner: function(option, onSuccess) {
+                    xpost('/createBanner', option, onSuccess);
+                },
+                deleteBanner: function(option, onSuccess){
+                    xpost('/deleteBanner', option, onSuccess);
+                },
+                sendTestBanner: function(option, onSuccess) {
+                    xpost('http://203.162.166.99:3000/testevent', option, onSuccess);
+                }
             };
         }]);
 })();

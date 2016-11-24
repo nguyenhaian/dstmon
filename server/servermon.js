@@ -215,7 +215,7 @@ var GreetingPopup = mongoose.model('GreetingPopup', {
     bonusIAP: Number,
     showPopup: Boolean,
     arrUrlBtn: [String],
-    arrPos: [{ Number, Number }],
+    arrPos: [],
     result: {
         //     {
         //     clickButtonBanner: Number,
@@ -256,7 +256,7 @@ var Type10Popup = mongoose.model('Type10Popup', {
     arrBonus: [Number],
     arrUrlBtn: [String],
     arrTypeBtn: [String],
-    arrPos: [{ Number, Number }],
+    arrPos: [],
     result: {}
 });
 var SMessage = mongoose.model('SMessage', { app: String, date: Date, type: Number, title: String, url: String, urllink: String, pos: { x: Number, y: Number } });
@@ -542,7 +542,7 @@ app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 app.use(bodyParser.json({ limit: '50mb' }));
 
 app.use(function(req, res, next) {
-    res.header("Access-Control-Allow-Origin", "http://203.162.121.174:3001");
+    res.header("Access-Control-Allow-Origin", "http://203.162.166.99:3001");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
 });
@@ -941,6 +941,8 @@ function format_sMes(docs) {
     for (var i = docs.length - 1; i >= 0; i--) {
         var doc = docs[i];
         var result = doc.result;
+        if (!result)
+            result = {};
 
         var datekeys = Object.keys(result);
         // sort tăng dần
@@ -1090,7 +1092,7 @@ function performancereport(req, res) {
 
     var options = {
         method: 'GET',
-        url: 'http://203.162.121.174:3000/ccus',
+        url: 'http://203.162.166.99:3000/ccus',
         headers: {
             'Content-Type': 'application/json'
         }
@@ -1273,15 +1275,39 @@ app.post('/ccujson', function(req, res) {
 });
 app.post('/getGP', function(req, res) {
     // console.log(JSON.stringify(req.body));
+    // var option = req.body;
+    // dbgetGrettingPopup(option,
+    //     function onSuccess(gp) {
+    //         res.json({ app: option.app, valid: gp[0], valid_in_future: gp[1], invalid: gp[2] });
+    //     },
+    //     function onFailed(error) {
+    //         // socket.emit('tld.response.error', error);
+    //         res.json({ error: error });
+    //     });
+
+    // console.log(JSON.stringify(req.body));
     var option = req.body;
-    dbgetGrettingPopup(option,
-        function onSuccess(gp) {
-            res.json({ app: option.app, valid: gp[0], valid_in_future: gp[1], invalid: gp[2] });
-        },
-        function onFailed(error) {
-            // socket.emit('tld.response.error', error);
-            res.json({ error: error });
-        });
+    var query = GreetingPopup.find(option.query);
+
+    if (option.selectOption) {
+        query = query.select(option.selectOption);
+    }
+    if (option.limit) {
+        query = query.limit(option.limit);
+    }
+
+    query.exec(function(err, docs) {
+        res.json({ app: option.app, err: err, data: docs });
+    });
+});
+
+app.get('/getGP/:_id', function(req, res) {
+    // console.log(JSON.stringify(req.body));
+    var _id = req.params._id;
+    var query = GreetingPopup.find({ _id: _id });
+    query.exec(function(err, doc) {
+        res.json({ err: err, data: doc });
+    });
 });
 
 app.post('/getBanner', function(req, res) {
@@ -1301,6 +1327,24 @@ app.post('/getBanner', function(req, res) {
     });
 });
 
+app.post('/deleteBanner', function(req, res) {
+    // console.log(JSON.stringify(req.body));
+    var option = req.body;
+
+    Type10Popup.remove({ _id: option._id }, function(err) {
+        res.json({ err: err });
+    });
+});
+
+app.post('/deleteGP', function(req, res) {
+    // console.log(JSON.stringify(req.body));
+    var option = req.body;
+
+    GreetingPopup.remove({ _id: option._id }, function(err) {
+        res.json({ err: err });
+    });
+});
+
 app.get('/getBanner/:_id', function(req, res) {
     // console.log(JSON.stringify(req.body));
     var _id = req.params._id;
@@ -1314,6 +1358,11 @@ app.post('/saveBanner', function(req, res) {
     var option = req.body; // { _id: item._id, data: data }
     if (_.has(option.data, 'result'))
         delete option.data.result;
+    if (_.has(option.data, 'date'))
+        option.data.date = moment(option.data.date, 'YYYY-MM-DDTHH:mm:ss.SSSSZ')._d;
+    if (_.has(option.data, 'dexp'))
+        option.data.dexp = moment(option.data.dexp, 'YYYY-MM-DDTHH:mm:ss.SSSSZ')._d;
+
 
     Type10Popup.update({ _id: option._id }, {
         $set: option.data
@@ -1386,6 +1435,71 @@ app.post('/createBanner', function(req, res) {
     banner.save(function(err, doc) {
         if (err) {
             console.log("Something wrong when insert banner! ");
+            console.log(err);
+        }
+
+        res.json({ err: err, data: doc });
+    });
+});
+
+app.post('/createGP', function(req, res) {
+    var option = req.body; // { _id: item._id, data: data }
+
+    var data = {
+        "title": "............",
+        "type": 5,
+        "app": option.app,
+        "priority": 11,
+        "requirePayment": 3,
+        "os": 0,
+        "version": [
+            3.9,
+            4.09
+        ],
+        "url": "http://siamplayth.com/mconfig/banner/lq_km100/100_1.png;http://siamplayth.com/mconfig/banner/lq_km100/100_2.png;http://siamplayth.com/mconfig/banner/lq_km100/100_3.png;http://siamplayth.com/mconfig/banner/lq_km100/100_4.png;http://siamplayth.com/mconfig/banner/lq_km100/100_5.png",
+        "urllink": "https://www.google.com.vn/",
+        "date": Date(),
+        "dexp": Date(),
+        "LQ": [
+            1,
+            99
+        ],
+        "AG": [
+            0,
+            25000
+        ],
+        "Vip": [
+            1,
+            4
+        ],
+        "countBtn": 3,
+        "valueSms": 2,
+        "valueCard": 0,
+        "valueIAP": 1,
+        "bonusSms": 100,
+        "bonusCard": 100,
+        "bonusIAP": 100,
+        "showPopup": false,
+        "arrUrlBtn": [
+            "http://siamplayth.com/mconfig/banner/button/btn_iap.png",
+            "http://siamplayth.com/mconfig/banner/button/btn_sms.png",
+            "http://siamplayth.com/mconfig/banner/button/btn_sms.png"
+        ],
+        "arrPos": [{
+            "x": 0,
+            "y": -0.35
+        }, {
+            "x": -0.3,
+            "y": -0.35
+        }, {
+            "x": 0.3,
+            "y": -0.35
+        }]
+    };
+    var banner = new GreetingPopup(data);
+    banner.save(function(err, doc) {
+        if (err) {
+            console.log("Something wrong when insert GreetingPopup! ");
             console.log(err);
         }
 
