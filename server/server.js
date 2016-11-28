@@ -17,7 +17,7 @@ var iprange = reload('./iprange.js')
 var utils = reload('./utils.js')
 
 /*************************************************************/
-// socketio namespacesm
+// socketio namespaces
 var client3C = io.of('/client3C'),
     client52 = io.of('/client52'),
     clientdt = io.of('/clientdt'),
@@ -58,7 +58,6 @@ var sendpulse = {
     expired_date: '',
     minDurationSentNotify: 5
 }
-var config = {};
 jsonfile.readFile(sendpulse.configurl, function(err, config) {
     sendpulse.config = config;
 });
@@ -97,10 +96,13 @@ var GreetingPopup = mongoose.model('GreetingPopup', {
     LQ: [Number],
     Vip: [Number],
     AG: [Number],
-    version: [Number, Number],
-    os: Number, //os: Number, // 0: không quan tâm, 1: iOS, 2: android
+    showLimit: Number,
     requirePayment: Number,
     priority: Number,
+    videoWatched: [Number],
+    vipchange: [Number],
+    st1_stake: [Number],
+    st1_game: [Number],
     date: Date,
     dexp: Date,
     app: String,
@@ -142,11 +144,15 @@ var Type10Popup = mongoose.model('Type10Popup', {
     LQ: [Number],
     Vip: [Number],
     AG: [Number],
-    version: [Number, Number],
+    version: [Number],
     os: Number, // 0: không quan tâm, 1: iOS, 2: android
-    stake: [Number, Number], // chỉ dùng khi showtype == 1
+    stake: [Number], // chỉ dùng khi showtype == 1
     requirePayment: Number,
     priority: Number,
+    videoWatched: [Number],
+    vipchange: [Number],
+    st1_stake: [Number],
+    st1_game: [Number],
     date: Date,
     dexp: Date,
     url: String,
@@ -240,8 +246,29 @@ Dist.find({})
 
 var getGPAsycn = {
     query: function(queryObject, callback) {
-        queryObject.find({ date: { $lte: new Date() }, dexp: { $gte: new Date() } })
+        queryObject.find({ date: { $lte: new Date() }, dexp: { $gte: new Date() } }) //.select('-result')
             .limit(100).lean().exec(function(err, docs) {
+                docs = docs.filter(function(item) {
+                    if (_.has(item, 'showDaily') && item.showDaily.length > 0) {
+                        // filter daily time
+                        var hour = moment().hour();
+                        var pass = false;
+                        _.forEach(item.showDaily, function(hourRange) {
+                            if (hourRange.length == 2) {
+                                if (hour >= hourRange[0] && hour < hourRange[1]) {
+                                    pass = true;
+                                    // break forEach
+                                    return false;
+                                }
+                            }
+                        });
+
+                        return pass;
+                    } else {
+                        // nếu ko có dailyTime thì mặc định là passfilter
+                        return true;
+                    }
+                });
                 callback(err, docs);
             });
     }
@@ -294,9 +321,16 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 app.use(function(req, res, next) {
-    res.header("Access-Control-Allow-Origin", "http://nguyenhaian.com:3003");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-    next();
+    var allowedOrigins = ['http://127.0.0.1:3003', 'http://localhost:3003', sendpulse.config.reportapp];
+    var origin = req.headers.origin;
+    if (allowedOrigins.indexOf(origin) > -1) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    // res.header("Access-Control-Allow-Origin", "http://nguyenhaian.com:3003");
+    res.header("Access-Control-Allow-Origin", 'GET, OPTIONS');
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    res.header('Access-Control-Allow-Credentials', true);
+    return next();
 });
 
 app.set('view engine', 'ejs');
@@ -556,7 +590,7 @@ function sendNotifyToFriendsOfUser(user) {
 
                 var options = {
                     method: 'POST',
-                    url: 'http://203.162.166.99:3003/notify',
+                    url: sendpulse.config.reportapp + '/notify',
                     headers: {
                         'Content-Type': 'application/json'
                     },
@@ -900,11 +934,17 @@ app.post('/testevent', function(req, res) {
     var sid = '_';
     _.forEach(connectedDevices, function(device, socketid) {
         if (_.has(device, 'username') && device.username == username) {
+            // if (req.body.event == 'news') {
+            //     utils.sendPopups(clientdt.to(socketid), MUser, device, req.body.data);
+            //     utils.sendPopups(client52.to(socketid), MUser, device, req.body.data);
+            //     utils.sendPopups(client3C.to(socketid), MUser, device, req.body.data);
+            // } else {
             client52.to(socketid).emit('event', req.body);
             clientdt.to(socketid).emit('event', req.body);
-            clientsiam.to(socketid).emit('event', req.body);
-            clientindo.to(socketid).emit('event', req.body);
+            // clientsiam.to(socketid).emit('event', req.body);
+            // clientindo.to(socketid).emit('event', req.body);
             client3C.to(socketid).emit('event', req.body);
+            // }
             sid = socketid;
             found = true;
             return false;

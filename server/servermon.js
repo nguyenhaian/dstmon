@@ -12,6 +12,7 @@ var sql = require('mssql');
 var request = require('request');
 var async = require("async");
 var json2csv = require('json2csv');
+var jsonfile = require('jsonfile');
 
 var onesignal = {
     groups: [{
@@ -64,6 +65,13 @@ var mssqlconfig = {
 
 sql.on('error', function(err) {
     console.log({ err: err })
+});
+
+var appconfig = {
+    configurl: './config.params.json'
+}
+jsonfile.readFile(appconfig.configurl, function(err, config) {
+    appconfig.config = config;
 });
 
 function createOneSignalMessage(campaignid, targetapp, recipient) {
@@ -200,7 +208,13 @@ var GreetingPopup = mongoose.model('GreetingPopup', {
     LQ: [Number],
     Vip: [Number],
     AG: [Number],
-    requirePayment: Boolean,
+    showLimit: Number,
+    requirePayment: Number,
+    priority: Number,
+    videoWatched: [Number],
+    vipchange:[Number],
+    st1_stake:[Number],
+    st1_game: [Number],
     date: Date,
     dexp: Date,
     app: String,
@@ -242,11 +256,15 @@ var Type10Popup = mongoose.model('Type10Popup', {
     LQ: [Number],
     Vip: [Number],
     AG: [Number],
-    version: [Number, Number],
+    version: [Number],
     os: Number, // 0: không quan tâm, 1: iOS, 2: android
-    stake: [Number, Number], // chỉ dùng khi showtype == 1
     requirePayment: Number,
     priority: Number,
+    videoWatched: [Number],
+    vipchange:[Number],
+    st1_stake:[Number],
+    st1_game: [Number],
+    showDaily: [],
     date: Date,
     dexp: Date,
     url: String,
@@ -258,6 +276,125 @@ var Type10Popup = mongoose.model('Type10Popup', {
     arrTypeBtn: [String],
     arrPos: [],
     result: {}
+});
+
+var Type20Popup = mongoose.model('BannerV2', {
+    app: String,
+  type: Number,
+  url: String,
+  arrValue: [
+    {
+      "type": "sms",
+      "btn": "http://siamplayth.com/mconfig/banner/button/btn_sms.png",
+      "pos": [
+        -0.3,
+        -0.3
+      ],
+      "ctype": 1,
+      "ccost": 10000,
+      "btype": 0,
+      "bvalue": 200,
+      "value": "40K Gold",
+      "bonus": "+80K Chip",
+      "cost": "10K VND",
+      "syntax": "mw 10000 teen NAP 52fun-ann2009-1",
+      "add": "+9029",
+      "comment": "nạp Gold, 10K VND, được 40k Gold, bonus Chip "
+    },
+    {
+      "type": "card",
+      "btn": "http://siamplayth.com/mconfig/banner/button/btn_card.png",
+      "pos": [
+        0,
+        -0.3
+      ],
+      "ctype": 1,
+      "ccost": 10000,
+      "btype": 0,
+      "bvalue": 200,
+      "value": "40K Gold",
+      "bonus": "+120K Chip",
+      "cost": "10K VND",
+      "comment": "nạp Gold, 10K VND, được 40k Gold, bonus Chip "
+    },
+    {
+      "type": "iap",
+      "btn": "http://siamplayth.com/mconfig/banner/button/btn_iap.png",
+      "pos": [
+        0.3,
+        -0.3
+      ],
+      "ctype": 1,
+      "ccost": 10000,
+      "btype": 0,
+      "bvalue": 200,
+      "value": "40K Gold",
+      "bonus": "+160K Chip",
+      "cost": "10K VND",
+      "comment": "nạp Gold, 10K VND, được 40k Gold, bonus Chip "
+    },
+    {
+      "type": "ok",
+      "btn": "http://siamplayth.com/mconfig/banner/button/btn_iap.png",
+      "pos": [
+        0.3,
+        -0.3
+      ]
+    },
+    {
+      "type": "video",
+      "btn": "http://siamplayth.com/mconfig/banner/button/btn_video.png",
+      "pos": [
+        0.3,
+        -0.3
+      ]
+    },
+    {
+      "type": "openlink",
+      "btn": "http://siamplayth.com/mconfig/banner/button/btn_video.png",
+      "pos": [
+        0.3,
+        -0.3
+      ],
+      "urllink": "http://google.com.vn"
+    },
+    {
+      "type": "bongda",
+      "btn": "http://siamplayth.com/mconfig/banner/button/btn_video.png",
+      "pos": [
+        0.3,
+        -0.3
+      ]
+    },
+    {
+      "type": "xoso",
+      "btn": "http://siamplayth.com/mconfig/banner/button/btn_video.png",
+      "pos": [
+        0.3,
+        -0.3
+      ]
+    }
+  ],
+  title: String,
+  note: String,
+  showLimit: Number,
+  os: Number,
+  requirePayment: Number,
+  priority: Number,
+  date: Date,
+  dexp: Date,
+  showType: 0,
+    videoWatched: [Number],
+    vipchange:[Number],
+    st1_stake:[Number],
+    st1_game: [Number],
+    showDaily: [],
+
+  stake: [Number  ],
+  version: [Number],
+  AG: [Number],
+  Vip: [Number],
+  LQ: [Number]
 });
 var SMessage = mongoose.model('SMessage', { app: String, date: Date, type: Number, title: String, url: String, urllink: String, pos: { x: Number, y: Number } });
 
@@ -541,11 +678,11 @@ app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 // parse application/json
 app.use(bodyParser.json({ limit: '50mb' }));
 
-app.use(function(req, res, next) {
-    res.header("Access-Control-Allow-Origin", "http://203.162.166.99:3001");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-    next();
-});
+// app.use(function(req, res, next) {
+//     res.header("Access-Control-Allow-Origin", "http://203.162.166.99:3001");
+//     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+//     next();
+// });
 
 // set the view engine to ejs
 app.set('view engine', 'ejs');
@@ -1092,7 +1229,7 @@ function performancereport(req, res) {
 
     var options = {
         method: 'GET',
-        url: 'http://203.162.166.99:3000/ccus',
+        url: appconfig.config.liveapp+'/ccus',
         headers: {
             'Content-Type': 'application/json'
         }
@@ -1310,6 +1447,15 @@ app.get('/getGP/:_id', function(req, res) {
     });
 });
 
+app.post('/deleteGP', function(req, res) {
+    // console.log(JSON.stringify(req.body));
+    var option = req.body;
+
+    GreetingPopup.remove({ _id: option._id }, function(err) {
+        res.json({ err: err });
+    });
+});
+
 app.post('/getBanner', function(req, res) {
     // console.log(JSON.stringify(req.body));
     var option = req.body;
@@ -1327,23 +1473,6 @@ app.post('/getBanner', function(req, res) {
     });
 });
 
-app.post('/deleteBanner', function(req, res) {
-    // console.log(JSON.stringify(req.body));
-    var option = req.body;
-
-    Type10Popup.remove({ _id: option._id }, function(err) {
-        res.json({ err: err });
-    });
-});
-
-app.post('/deleteGP', function(req, res) {
-    // console.log(JSON.stringify(req.body));
-    var option = req.body;
-
-    GreetingPopup.remove({ _id: option._id }, function(err) {
-        res.json({ err: err });
-    });
-});
 
 app.get('/getBanner/:_id', function(req, res) {
     // console.log(JSON.stringify(req.body));
@@ -1395,6 +1524,7 @@ app.post('/createBanner', function(req, res) {
         stake: [0, 10000000], // chỉ dùng khi showtype == 1
         requirePayment: 3,
         priority: 0,
+        showDaily: [[0,24]],
         date: Date(),
         dexp: Date(),
         url: '',
@@ -1439,6 +1569,38 @@ app.post('/createBanner', function(req, res) {
         }
 
         res.json({ err: err, data: doc });
+    });
+});
+
+app.post('/deleteBanner', function(req, res) {
+    // console.log(JSON.stringify(req.body));
+    var option = req.body;
+
+    Type10Popup.remove({ _id: option._id }, function(err) {
+        res.json({ err: err });
+    });
+});
+
+app.post('/saveGP', function(req, res) {
+    var option = req.body; // { _id: item._id, data: data }
+    if (_.has(option.data, 'result'))
+        delete option.data.result;
+    if (_.has(option.data, 'date'))
+        option.data.date = moment(option.data.date, 'YYYY-MM-DDTHH:mm:ss.SSSSZ')._d;
+    if (_.has(option.data, 'dexp'))
+        option.data.dexp = moment(option.data.dexp, 'YYYY-MM-DDTHH:mm:ss.SSSSZ')._d;
+
+
+    GreetingPopup.update({ _id: option._id }, {
+        $set: option.data
+    }, { new: true }, function(err, doc) {
+        if (err) {
+            res.json({ err: err });
+            console.log("GreetingPopup saveBanner failed!");
+            return;
+        }
+        res.setHeader('Content-Type', 'application/json');
+        res.send(JSON.stringify(doc, null, 3));
     });
 });
 

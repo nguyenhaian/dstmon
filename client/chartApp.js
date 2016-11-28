@@ -31,6 +31,11 @@ app.config(function($stateProvider, $urlRouterProvider) {
             templateUrl: "views/home.banner.html",
             controller: "BannerController"
         })
+        .state('home.bannerv2', {
+            url: "/bannerv2",
+            templateUrl: "views/home.bannerv2.html",
+            controller: "BannerController"
+        })
         .state('login', {
             url: "/login",
             templateUrl: "views/login.html"

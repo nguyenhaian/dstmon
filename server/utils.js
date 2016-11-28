@@ -101,7 +101,7 @@ function sendPopups(socket, MUser, user, sMes) {
             if (!_.has(d, 'AG')) {
                 d.AG = [0, 100000000];
             }
-            if (!_.has(d, 'videoWatched')) {
+            if (!_.has(d, 'videoWatched') || d.videoWatched.length == 0) {
                 d.videoWatched = [0, 100000000];
             }
 
@@ -112,7 +112,7 @@ function sendPopups(socket, MUser, user, sMes) {
             pass_filter &= pass_oscheck;
             pass_filter &= pass_versioncheck;
 
-            // user.pass_lqcheck = pass_lqcheck;
+            // user[].pass_lqcheck = pass_lqcheck;
             // user.pass_oscheck = pass_oscheck;
             // user.pass_versioncheck = pass_versioncheck;
 
@@ -170,7 +170,10 @@ function sendPopups(socket, MUser, user, sMes) {
                     user.popupHasShowed[item.showType] = 0;
                 }
                 user.popupHasShowed[item.showType]++;
-
+                
+                if (_.has(item, 'result'))
+                    delete item.result;
+                
                 return item;
             });
 
@@ -212,7 +215,7 @@ exports.filterShowType1 = (sMesData, gameid, gold, vip, stake) => {
 
             if (!d.hasOwnProperty('st1_stake')) // trong khoảng stake nào
                 d.st1_stake = [0, 10000000];
-            var pass_stakecheck = (stake >= d.st1_stake[0] && stake <= d.st1_stake[1]);
+            var pass_stakecheck = (stake >= d.st1_stake[0] && stake <= d.st1_stake[1]) || d.st1_stake.length == 0;
 
             return pass_gamecheck && pass_stakecheck;
         });

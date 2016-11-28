@@ -141,7 +141,7 @@
 
             socket.getGP({ query: query, selectOption: select, limit: limit }, function onSuccess(data) {
                 if (data.err) {
-                    alert(JSON.stringify(err));
+                    alert(JSON.stringify(data.err));
                     return;
                 }
 
@@ -160,7 +160,7 @@
 
             socket.getGP({ query: { _id: item._id }, selectOption: '-result', limit: 1 }, function onSuccess(data) {
                 if (data.err) {
-                    alert(JSON.stringify(err));
+                    alert(JSON.stringify(data.err));
                     return;
                 }
                 console.log(data);
@@ -192,29 +192,32 @@
 
             socket.saveGP({ _id: item._id, data: data }, function onSuccess(data) {
                 if (data.err) {
-                    alert(JSON.stringify(err));
+                    alert(JSON.stringify(data.err));
                     return;
                 }
                 // console.log(data);
                 alert(JSON.stringify(data));
 
-                $scope.restore_banner(item);
+                $scope.restore_gp(item);
             });
         }
 
         $scope.delete_gp = function(item, index) {
             $scope.inloading = true;
 
-            socket.deleteGP({ _id: item._id }, function onSuccess(data) {
-                if (data.err) {
-                    alert(JSON.stringify(err));
-                    return;
-                }
-                console.log(data);
-                // alert(JSON.stringify(data));
-                $scope.result.splice(index, 1);
-                $('#canvas_' + item._id).closest('.row').remove();
-            });
+            if (window.confirm("Do you really want to delete?")) {
+                // window.open("exit.html", "Thanks for Visiting!");
+                socket.deleteGP({ _id: item._id }, function onSuccess(data) {
+                    if (data.err) {
+                        alert(JSON.stringify(data.err));
+                        return;
+                    }
+                    console.log(data);
+                    // alert(JSON.stringify(data));
+                    $scope.result.splice(index, 1);
+                    $('#canvas_' + item._id).closest('.row').remove();
+                });
+            }
         }
 
         $scope.sendTestBanner = function(item) {
@@ -237,7 +240,7 @@
 
             socket.sendTestBanner({ event: "news", name: $scope.queryTestUser, data: [data] }, function onSuccess(data) {
                 if (data.err) {
-                    alert(JSON.stringify(err));
+                    alert(JSON.stringify(data.err));
                     return;
                 }
                 // console.log(data);
@@ -250,7 +253,7 @@
 
             socket.createGP({ app: $scope.target.selectedApp }, function onSuccess(data) {
                 if (data.err) {
-                    alert(JSON.stringify(err));
+                    alert(JSON.stringify(data.err));
                     return;
                 }
                 console.log(data);

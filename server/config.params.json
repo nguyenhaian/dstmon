@@ -1,4 +1,6 @@
 {
+    "liveapp":"http://live.dst.nguyenhaian.com",
+    "reportapp":"http://report.dst.nguyenhaian.com",
     "maillist": [{
         "name": "An Nguyen",
         "email": "nguyenhaian1412@gmail.com"

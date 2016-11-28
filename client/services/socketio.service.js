@@ -14,6 +14,11 @@
             var url = absUrl + 'tracker';
             console.log('absUrl: ' + absUrl)
             var socket = io(url, { transports: ['websocket'] });
+            var appconfig = {};
+
+            $http.get('../../server/config.params.json').success(function(data) {
+                appconfig.liveapp = data.liveapp;
+            });
 
             var getTimeStamp = function() {
                 return moment().format("YYYY-MM-DD HH:mm:ss.SSS");
@@ -198,7 +203,7 @@
                 createGP: function(option, onSuccess) {
                     xpost('/createGP', option, onSuccess);
                 },
-                deleteGP: function(option, onSuccess){
+                deleteGP: function(option, onSuccess) {
                     xpost('/deleteGP', option, onSuccess);
                 },
                 getBanner: function(option, onSuccess) {
@@ -210,11 +215,11 @@
                 createBanner: function(option, onSuccess) {
                     xpost('/createBanner', option, onSuccess);
                 },
-                deleteBanner: function(option, onSuccess){
+                deleteBanner: function(option, onSuccess) {
                     xpost('/deleteBanner', option, onSuccess);
                 },
                 sendTestBanner: function(option, onSuccess) {
-                    xpost('http://203.162.166.99:3000/testevent', option, onSuccess);
+                    xpost(appconfig.liveapp+'/testevent', option, onSuccess);
                 }
             };
         }]);
