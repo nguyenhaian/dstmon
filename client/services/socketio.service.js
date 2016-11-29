@@ -1,6 +1,18 @@
 (function() {
     'use strict';
 
+    function readTextFile(file, callback) {
+        var rawFile = new XMLHttpRequest();
+        rawFile.overrideMimeType("application/json");
+        rawFile.open("GET", file, true);
+        rawFile.onreadystatechange = function() {
+            if (rawFile.readyState === 4 && rawFile.status == "200") {
+                callback(rawFile.responseText);
+            }
+        }
+        rawFile.send(null);
+    }
+
     angular
         .module('chartApp')
         .factory('socket', ['d3s', '$rootScope', '$location', '$http', function(d3s, $rootScope, $location, $http) {
@@ -11,13 +23,18 @@
             }
             var startLoadingTime = null;
             // var url = 'http://203.162.121.174:3003/tracker';
-            var url = absUrl + 'tracker';
+            // var url = absUrl + 'tracker';
+            var url = "http://tracker.dstmon.space/tracker";
             console.log('absUrl: ' + absUrl)
             var socket = io(url, { transports: ['websocket'] });
             var appconfig = {};
 
-            $http.get('../../server/config.params.json').success(function(data) {
-                appconfig.liveapp = data.liveapp;
+            //usage:
+            readTextFile("/assets/config.json", function(text) {
+                var data = JSON.parse(text);
+                console.log(data);
+                appconfig.trackerurl = data.trackerurl;
+                appconfig.socketurl = data.socketurl;
             });
 
             var getTimeStamp = function() {
@@ -109,6 +126,10 @@
                 });
                 startLoadingTime = moment();
             }
+
+            socket.on("connection", function(data){
+                console.log("****** connection ******");
+            });
 
             socket.on("mobile_reginfo", function(data) {
                 console.log("<---- mobile_reginfo ");
@@ -219,7 +240,7 @@
                     xpost('/deleteBanner', option, onSuccess);
                 },
                 sendTestBanner: function(option, onSuccess) {
-                    xpost(appconfig.liveapp+'/testevent', option, onSuccess);
+                    xpost(appconfig.socketurl + '/testevent', option, onSuccess);
                 }
             };
         }]);

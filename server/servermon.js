@@ -13,6 +13,7 @@ var request = require('request');
 var async = require("async");
 var json2csv = require('json2csv');
 var jsonfile = require('jsonfile');
+var models = require('./models.js')
 
 var onesignal = {
     groups: [{
@@ -180,231 +181,6 @@ var realtimemode = false;
 /*************************************************************/
 mongoose.connect('mongodb://localhost/CustomerMonitor');
 
-var SnapshotData = mongoose.model('SnapshotData', { time: String, formattedData: {} });
-var Dist = mongoose.model("Dist", { id: String, data: { os: String, bundle: String, app: String } });
-var LoginData = mongoose.model('LoginData', { time: Date, formattedData: {} });
-var LoginFailed = mongoose.model('LoginFailed', { time: Date, app: String, bundle: String, os: String, host: String, gameid: Number, username: String, errorcode: Number, errormsg: String, d: Number });
-var LoadConfig = mongoose.model('LoadConfig', { time: Date, app: String, bundle: String, os: String, 'r1': Number, 'r2': Number, 'r3': Number, 'r4': Number, 'r5': Number });
-var LoginSuccess = mongoose.model('LoginSuccess', { time: Date, app: String, bundle: String, os: String, 'd1r1': Number, 'd1r2': Number, 'd1r3': Number, 'd1r4': Number, 'd1r5': Number, 'd2r1': Number, 'd2r2': Number, 'd2r3': Number, 'd2r4': Number, 'd2r5': Number });
-// {'event':'payment_success', type:type, amount:amount, d:0.1}
-// {'event':'payment_failed', type:type, amount:amount, errcode:'', d:0.1}
-// {'event':'send_sms', add:'+8028'}
-var OpenPayment = mongoose.model('OpenPayment', { time: Date, app: String, bundle: String, os: String, fromScene: String, vip: Number, gold: Number, duration: Number }); // -> chưa ghi
-var PaymentSuccess = mongoose.model('PaymentSuccess', { time: Date, app: String, bundle: String, os: String, type: String, amount: Number, d: Number });
-var PaymentFailed = mongoose.model('PaymentFailed', { time: Date, app: String, bundle: String, os: String, type: String, amount: Number, errcode: String, d: Number });
-var SendSMS = mongoose.model('SendSMS', { time: Date, app: String, bundle: String, os: String, add: String });
-
-var SiamAction = mongoose.model('SiamAction', { date: Date, clicksuggestdummy: Number, showsuggestdummy: Number, timeleftdummy: {}, timeplaydummy: {} });
-var CCU = mongoose.model('CCU', { date: Date, app: {}, ip: {} });
-// {
-//     "type": 1,
-//     "title": "nạp gold",
-//     "url": "http://mobile.tracking.dautruong.info/img/banner/banner140916.jpg"
-// }
-
-var GreetingPopup = mongoose.model('GreetingPopup', {
-    type: Number,
-    title: String,
-    LQ: [Number],
-    Vip: [Number],
-    AG: [Number],
-    showLimit: Number,
-    requirePayment: Number,
-    priority: Number,
-    videoWatched: [Number],
-    vipchange:[Number],
-    st1_stake:[Number],
-    st1_game: [Number],
-    date: Date,
-    dexp: Date,
-    app: String,
-    url: String,
-    urllink: String,
-    countBtn: Number,
-    valueSms: Number,
-    valueCard: Number,
-    valueIAP: Number,
-    bonusSms: Number,
-    bonusCard: Number,
-    bonusIAP: Number,
-    showPopup: Boolean,
-    arrUrlBtn: [String],
-    arrPos: [],
-    result: {
-        //     {
-        //     clickButtonBanner: Number,
-        //     closeBanner: Number,
-        //     clickButtonIAP: Number,
-        //     clickButtonSms: Number,
-        //     clickButtonCard: Number
-        // }
-    }
-});
-
-// requirePayment:
-// 0 -> chưa nạp tiền -> hiển thị banner này. 
-// 1 -> nạp tiền rồi -> ko hiển thị banner này.
-// 2 -> nạp tiền rồi -> hiển thị banner này.
-// 3 -> ko quan tâm
-var Type10Popup = mongoose.model('Type10Popup', {
-    app: String,
-    type: Number,
-    showType: Number, // 0: login, 1: lúc hết tiền
-    title: String,
-    note: String,
-    showLimit: Number, // số lần hiển thị tối da trong 1 ngày với 1 user
-    LQ: [Number],
-    Vip: [Number],
-    AG: [Number],
-    version: [Number],
-    os: Number, // 0: không quan tâm, 1: iOS, 2: android
-    requirePayment: Number,
-    priority: Number,
-    videoWatched: [Number],
-    vipchange:[Number],
-    st1_stake:[Number],
-    st1_game: [Number],
-    showDaily: [],
-    date: Date,
-    dexp: Date,
-    url: String,
-    urllink: String,
-    countBtn: Number,
-    arrValue: [Number],
-    arrBonus: [Number],
-    arrUrlBtn: [String],
-    arrTypeBtn: [String],
-    arrPos: [],
-    result: {}
-});
-
-var Type20Popup = mongoose.model('BannerV2', {
-    app: String,
-  type: Number,
-  url: String,
-  arrValue: [
-    {
-      "type": "sms",
-      "btn": "http://siamplayth.com/mconfig/banner/button/btn_sms.png",
-      "pos": [
-        -0.3,
-        -0.3
-      ],
-      "ctype": 1,
-      "ccost": 10000,
-      "btype": 0,
-      "bvalue": 200,
-      "value": "40K Gold",
-      "bonus": "+80K Chip",
-      "cost": "10K VND",
-      "syntax": "mw 10000 teen NAP 52fun-ann2009-1",
-      "add": "+9029",
-      "comment": "nạp Gold, 10K VND, được 40k Gold, bonus Chip "
-    },
-    {
-      "type": "card",
-      "btn": "http://siamplayth.com/mconfig/banner/button/btn_card.png",
-      "pos": [
-        0,
-        -0.3
-      ],
-      "ctype": 1,
-      "ccost": 10000,
-      "btype": 0,
-      "bvalue": 200,
-      "value": "40K Gold",
-      "bonus": "+120K Chip",
-      "cost": "10K VND",
-      "comment": "nạp Gold, 10K VND, được 40k Gold, bonus Chip "
-    },
-    {
-      "type": "iap",
-      "btn": "http://siamplayth.com/mconfig/banner/button/btn_iap.png",
-      "pos": [
-        0.3,
-        -0.3
-      ],
-      "ctype": 1,
-      "ccost": 10000,
-      "btype": 0,
-      "bvalue": 200,
-      "value": "40K Gold",
-      "bonus": "+160K Chip",
-      "cost": "10K VND",
-      "comment": "nạp Gold, 10K VND, được 40k Gold, bonus Chip "
-    },
-    {
-      "type": "ok",
-      "btn": "http://siamplayth.com/mconfig/banner/button/btn_iap.png",
-      "pos": [
-        0.3,
-        -0.3
-      ]
-    },
-    {
-      "type": "video",
-      "btn": "http://siamplayth.com/mconfig/banner/button/btn_video.png",
-      "pos": [
-        0.3,
-        -0.3
-      ]
-    },
-    {
-      "type": "openlink",
-      "btn": "http://siamplayth.com/mconfig/banner/button/btn_video.png",
-      "pos": [
-        0.3,
-        -0.3
-      ],
-      "urllink": "http://google.com.vn"
-    },
-    {
-      "type": "bongda",
-      "btn": "http://siamplayth.com/mconfig/banner/button/btn_video.png",
-      "pos": [
-        0.3,
-        -0.3
-      ]
-    },
-    {
-      "type": "xoso",
-      "btn": "http://siamplayth.com/mconfig/banner/button/btn_video.png",
-      "pos": [
-        0.3,
-        -0.3
-      ]
-    }
-  ],
-  title: String,
-  note: String,
-  showLimit: Number,
-  os: Number,
-  requirePayment: Number,
-  priority: Number,
-  date: Date,
-  dexp: Date,
-  showType: 0,
-    videoWatched: [Number],
-    vipchange:[Number],
-    st1_stake:[Number],
-    st1_game: [Number],
-    showDaily: [],
-
-  stake: [Number  ],
-  version: [Number],
-  AG: [Number],
-  Vip: [Number],
-  LQ: [Number]
-});
-var SMessage = mongoose.model('SMessage', { app: String, date: Date, type: Number, title: String, url: String, urllink: String, pos: { x: Number, y: Number } });
-
-var GPReport = mongoose.model('GPReport', {
-    date: Date,
-    gpid: Number,
-    title: String,
-    result: {}
-});
-
 // init data when server startup
 /*************************************************************/
 // var lastHours = moment().subtract(1, 'hours').format("YYYY-MM-DD HH:mm:ss");
@@ -416,7 +192,7 @@ function objectIdWithTimestamp(date) {
     return mongoose.Types.ObjectId(hexSeconds + "0000000000000000");
 }
 
-SnapshotData.find({})
+models.SnapshotData.find({})
     .select('_id time formattedData')
     // .where('time').gt(lastHours)
     .sort({ _id: -1 })
@@ -427,7 +203,7 @@ SnapshotData.find({})
         console.log("timelineFormattedData length " + docs.length);
     });
 
-Dist.find({})
+models.Dist.find({})
     // .select({ id: 1, data: 1, _id: 0 })
     .exec(function(err, docs) {
         if (err) return console.log(err);
@@ -471,7 +247,7 @@ function dbgetTimeLineData(option, onSuccess, onFailed) {
             }
 
             console.log(getTimeStamp() + ' start find on DB');
-            SnapshotData.find({ _id: { $gt: start, $lt: end } })
+            models.SnapshotData.find({ _id: { $gt: start, $lt: end } })
                 .select('_id time formattedData')
                 // .where('time').gt(start)
                 .sort({ _id: -1 })
@@ -490,7 +266,7 @@ function dbgetTimeLineData(option, onSuccess, onFailed) {
         if (option.limit != 0 && option.date == null) {
             // find on DB
             console.log(getTimeStamp() + ' start find on DB');
-            SnapshotData.find({})
+            models.SnapshotData.find({})
                 .select('_id time formattedData')
                 // .where('time').gt(start)
                 .sort({ _id: -1 })
@@ -518,7 +294,7 @@ function dbgetLoginData(option, onSuccess, onFailed) {
         // onSuccess(timelineFormattedData.slice(0, limit));
         // socket.emit('tld.response', timelineFormattedData.slice(0, limit));
         console.log(getTimeStamp() + ' start find on DB');
-        LoginData.find({})
+        models.LoginData.find({})
             .select('_id time formattedData')
             // .where('time').gt(start)
             .sort({ _id: -1 })
@@ -556,7 +332,7 @@ function dbgetLoginData(option, onSuccess, onFailed) {
         }
 
         console.log(getTimeStamp() + ' start find on DB');
-        LoginData.find({ _id: { $gt: start, $lt: end } })
+        models.LoginData.find({ _id: { $gt: start, $lt: end } })
             .select('_id time formattedData')
             // .where('time').gt(start)
             .sort({ _id: -1 })
@@ -583,7 +359,7 @@ function dbgetGrettingPopup(option, onSuccess, onFailed) {
 
     var getGPAsycn = {
         query: function(querystring, callback) {
-            SMessage.find(querystring)
+            models.SMessage.find(querystring)
                 .limit(200)
                 .exec(function(err, docs) {
                     callback(err, docs);
@@ -613,7 +389,7 @@ function dbgetLoadConfigActionData(option, onSuccess, onFailed) {
         // onSuccess(timelineFormattedData.slice(0, limit));
         // socket.emit('tld.response', timelineFormattedData.slice(0, limit));
         console.log(getTimeStamp() + ' start find on DB');
-        LoadConfig.find({})
+        models.LoadConfig.find({})
             // .select('_id time formattedData')
             // .where('time').gt(start)
             .sort({ _id: -1 })
@@ -651,7 +427,7 @@ function dbgetLoadConfigActionData(option, onSuccess, onFailed) {
         }
 
         console.log(getTimeStamp() + ' start find on DB');
-        LoadConfig.find({ _id: { $gt: start, $lt: end } })
+        models.LoadConfig.find({ _id: { $gt: start, $lt: end } })
             // .select('_id time formattedData')
             // .where('time').gt(start)
             .sort({ _id: -1 })
@@ -702,7 +478,7 @@ function addDistInfo(_info) {
             bundle: _info.bundle,
             op: _info.operator
         };
-        var dist = new Dist({ id: _distid, data: distsInfo[_distid] });
+        var dist = new models.Dist({ id: _distid, data: distsInfo[_distid] });
         dist.save(function(err, logDoc) {
             if (err) return console.error(err);
             console.log('+dist');
@@ -714,7 +490,7 @@ function addDistInfo(_info) {
             bundle: _info.bundle,
             op: _info.operator
         };
-        Dist.update({ id: _distid }, { $set: { data: distsInfo[_distid] } }, {}, function(err, logDoc) {
+        models.Dist.update({ id: _distid }, { $set: { data: distsInfo[_distid] } }, {}, function(err, logDoc) {
             if (err) return console.error(err);
             console.log('*dist');
         });
@@ -995,7 +771,7 @@ app.get('/messagedetail/:appid/:msgid', function(req, res) {
 app.get('/loginfailed', function(req, res) {
     // res.sendFile(__dirname + '/../client/index.html');
 
-    LoginFailed.find({})
+    models.LoginFailed.find({})
         // .select('_id time formattedData')
         // .where('time').gt(lastHours)
         .sort({ _id: -1 })
@@ -1013,7 +789,7 @@ app.get('/loginfailed', function(req, res) {
 app.get('/siamaction', function(req, res) {
     // res.sendFile(__dirname + '/../client/index.html');
 
-    SiamAction.find({})
+    models.SiamAction.find({})
         // .select('_id time formattedData')
         // .where('time').gt(lastHours)
         .sort({ _id: -1 })
@@ -1164,7 +940,7 @@ app.get('/popupreport/:app', function(req, res) {
         }
     };
 
-    async.map([SMessage, GreetingPopup, Type10Popup], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
+    async.map([models.SMessage, models.GreetingPopup, models.Type10Popup], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
         if (err) {
             res.send(JSON.stringify(err, null, 3));
             return;
@@ -1229,7 +1005,7 @@ function performancereport(req, res) {
 
     var options = {
         method: 'GET',
-        url: appconfig.config.liveapp+'/ccus',
+        url: appconfig.config.liveapp + '/ccus',
         headers: {
             'Content-Type': 'application/json'
         }
@@ -1320,7 +1096,7 @@ function dbgetCCU(start, onSuccess, onFailed) {
     if (n > 20)
         n = 20;
     // trong tập cexp bản ghi, mình sẽ lọc bớt khoảng n lần, để đc số design (là số hiển thị đc) vào khoảng 600
-    CCU.find({ _id: { $gte: start }, si: { $mod: [n, 0] } }) // số remains = 0 -> n-1, số nào cũng đc
+    models.CCU.find({ _id: { $gte: start }, si: { $mod: [n, 0] } }) // số remains = 0 -> n-1, số nào cũng đc
         .sort({ _id: -1 })
         // .limit(limit) -> ko còn limit nữa
         .lean().exec(function(err, docs) {
@@ -1334,6 +1110,11 @@ function dbgetCCU(start, onSuccess, onFailed) {
                             return index % n == 0;
                         });
                     }
+                }
+
+                if (docs.length < 1) {
+                    onFailed("no data");
+                    return;
                 }
 
                 var doc = docs[docs.length - 1];
@@ -1401,7 +1182,7 @@ app.get('/ccutsv/:option', function(req, res) {
 
 app.post('/ccujson', function(req, res) {
     var option = req.body;
-    CCU.find({})
+    models.CCU.find({})
         .sort({ _id: -1 })
         .limit(30)
         .exec(function(err, docs) {
@@ -1424,7 +1205,7 @@ app.post('/getGP', function(req, res) {
 
     // console.log(JSON.stringify(req.body));
     var option = req.body;
-    var query = GreetingPopup.find(option.query);
+    var query = models.GreetingPopup.find(option.query);
 
     if (option.selectOption) {
         query = query.select(option.selectOption);
@@ -1441,7 +1222,7 @@ app.post('/getGP', function(req, res) {
 app.get('/getGP/:_id', function(req, res) {
     // console.log(JSON.stringify(req.body));
     var _id = req.params._id;
-    var query = GreetingPopup.find({ _id: _id });
+    var query = models.GreetingPopup.find({ _id: _id });
     query.exec(function(err, doc) {
         res.json({ err: err, data: doc });
     });
@@ -1451,135 +1232,11 @@ app.post('/deleteGP', function(req, res) {
     // console.log(JSON.stringify(req.body));
     var option = req.body;
 
-    GreetingPopup.remove({ _id: option._id }, function(err) {
+    models.GreetingPopup.remove({ _id: option._id }, function(err) {
         res.json({ err: err });
     });
 });
 
-app.post('/getBanner', function(req, res) {
-    // console.log(JSON.stringify(req.body));
-    var option = req.body;
-    var query = Type10Popup.find(option.query);
-
-    if (option.selectOption) {
-        query = query.select(option.selectOption);
-    }
-    if (option.limit) {
-        query = query.limit(option.limit);
-    }
-
-    query.exec(function(err, docs) {
-        res.json({ app: option.app, err: err, data: docs });
-    });
-});
-
-
-app.get('/getBanner/:_id', function(req, res) {
-    // console.log(JSON.stringify(req.body));
-    var _id = req.params._id;
-    var query = Type10Popup.find({ _id: _id });
-    query.exec(function(err, doc) {
-        res.json({ err: err, data: doc });
-    });
-});
-
-app.post('/saveBanner', function(req, res) {
-    var option = req.body; // { _id: item._id, data: data }
-    if (_.has(option.data, 'result'))
-        delete option.data.result;
-    if (_.has(option.data, 'date'))
-        option.data.date = moment(option.data.date, 'YYYY-MM-DDTHH:mm:ss.SSSSZ')._d;
-    if (_.has(option.data, 'dexp'))
-        option.data.dexp = moment(option.data.dexp, 'YYYY-MM-DDTHH:mm:ss.SSSSZ')._d;
-
-
-    Type10Popup.update({ _id: option._id }, {
-        $set: option.data
-    }, { new: true }, function(err, doc) {
-        if (err) {
-            res.json({ err: err });
-            console.log("Type10Popup saveBanner failed!");
-            return;
-        }
-        res.setHeader('Content-Type', 'application/json');
-        res.send(JSON.stringify(doc, null, 3));
-    });
-});
-
-app.post('/createBanner', function(req, res) {
-    var option = req.body; // { _id: item._id, data: data }
-
-    var data = {
-        app: option.app,
-        type: 10,
-        showType: 0,
-        title: '',
-        note: 'String',
-        showLimit: 100, // số lần hiển thị tối da trong 1 ngày với 1 user
-        LQ: [0, 100000000],
-        Vip: [0, 10],
-        AG: [0, 100000000],
-        version: [0, 10],
-        os: 0, // 0: không quan tâm, 1: iOS, 2: android
-        stake: [0, 10000000], // chỉ dùng khi showtype == 1
-        requirePayment: 3,
-        priority: 0,
-        showDaily: [[0,24]],
-        date: Date(),
-        dexp: Date(),
-        url: '',
-        urllink: '',
-        countBtn: 3,
-        arrTypeBtn: [
-            "sms",
-            "sms",
-            "iap"
-        ],
-        arrUrlBtn: [
-            "http://siamplayth.com/mconfig/banner/button/btn_sms.png",
-            "http://siamplayth.com/mconfig/banner/button/btn_sms.png",
-            "http://siamplayth.com/mconfig/banner/button/btn_iap.png"
-        ],
-        arrBonus: [
-            100,
-            200,
-            300
-        ],
-        arrValue: [
-            0,
-            1,
-            0
-        ],
-        arrPos: [{
-            "x": -0.3,
-            "y": -0.3
-        }, {
-            "x": 0,
-            "y": -0.3
-        }, {
-            "x": 0.3,
-            "y": -0.3
-        }],
-    };
-    var banner = new Type10Popup(data);
-    banner.save(function(err, doc) {
-        if (err) {
-            console.log("Something wrong when insert banner! ");
-            console.log(err);
-        }
-
-        res.json({ err: err, data: doc });
-    });
-});
-
-app.post('/deleteBanner', function(req, res) {
-    // console.log(JSON.stringify(req.body));
-    var option = req.body;
-
-    Type10Popup.remove({ _id: option._id }, function(err) {
-        res.json({ err: err });
-    });
-});
 
 app.post('/saveGP', function(req, res) {
     var option = req.body; // { _id: item._id, data: data }
@@ -1590,13 +1247,12 @@ app.post('/saveGP', function(req, res) {
     if (_.has(option.data, 'dexp'))
         option.data.dexp = moment(option.data.dexp, 'YYYY-MM-DDTHH:mm:ss.SSSSZ')._d;
 
-
-    GreetingPopup.update({ _id: option._id }, {
+    models.GreetingPopup.update({ _id: option._id }, {
         $set: option.data
     }, { new: true }, function(err, doc) {
         if (err) {
             res.json({ err: err });
-            console.log("GreetingPopup saveBanner failed!");
+            console.log("models.GreetingPopup saveBanner failed!");
             return;
         }
         res.setHeader('Content-Type', 'application/json');
@@ -1658,10 +1314,10 @@ app.post('/createGP', function(req, res) {
             "y": -0.35
         }]
     };
-    var banner = new GreetingPopup(data);
+    var banner = new models.GreetingPopup(data);
     banner.save(function(err, doc) {
         if (err) {
-            console.log("Something wrong when insert GreetingPopup! ");
+            console.log("Something wrong when insert models.GreetingPopup! ");
             console.log(err);
         }
 
@@ -1669,6 +1325,295 @@ app.post('/createGP', function(req, res) {
     });
 });
 
+app.post('/getBanner', function(req, res) {
+    // console.log(JSON.stringify(req.body));
+    var option = req.body;
+
+    var Model = models.Type10Popup;
+    if (option.bannerVer == 1) {
+        Model = models.Type10Popup;
+    } else if (option.bannerVer == 2) {
+        Model = models.BannerV2;
+    } else {
+        res.json({ err: "wrong bannerVer " + option.bannerVer });
+        return;
+    }
+
+    var query = Model.find(option.query);
+
+    if (option.selectOption) {
+        query = query.select(option.selectOption);
+    }
+    if (option.limit) {
+        query = query.limit(option.limit);
+    }
+
+    query.exec(function(err, docs) {
+        res.json({ app: option.app, err: err, data: docs });
+    });
+});
+
+
+app.get('/getBanner/:_id', function(req, res) {
+    // console.log(JSON.stringify(req.body));
+    var _id = req.params._id;
+    var Model = models.Type10Popup;
+    if (option.bannerVer == 1) {
+        Model = models.Type10Popup;
+    } else if (option.bannerVer == 2) {
+        Model = models.BannerV2;
+    } else {
+        res.json({ err: "wrong bannerVer " + option.bannerVer });
+        return;
+    }
+    var query = Model.find({ _id: _id });
+    query.exec(function(err, doc) {
+        res.json({ err: err, data: doc });
+    });
+});
+
+app.post('/saveBanner', function(req, res) {
+    var option = req.body; // { _id: item._id, data: data }
+    if (_.has(option.data, 'result'))
+        delete option.data.result;
+    if (_.has(option.data, 'date'))
+        option.data.date = moment(option.data.date, 'YYYY-MM-DDTHH:mm:ss.SSSSZ')._d;
+    if (_.has(option.data, 'dexp'))
+        option.data.dexp = moment(option.data.dexp, 'YYYY-MM-DDTHH:mm:ss.SSSSZ')._d;
+
+
+    var Model = models.Type10Popup;
+    if (option.bannerVer == 1) {
+        Model = models.Type10Popup;
+    } else if (option.bannerVer == 2) {
+        Model = models.BannerV2;
+    } else {
+        res.json({ err: "wrong bannerVer " + option.bannerVer });
+        return;
+    }
+
+    Model.update({ _id: option._id }, {
+        $set: option.data
+    }, { new: true }, function(err, doc) {
+        if (err) {
+            res.json({ err: err });
+            console.log("Banner saveBanner failed!");
+            return;
+        }
+        res.setHeader('Content-Type', 'application/json');
+        res.send(JSON.stringify(doc, null, 3));
+    });
+});
+
+app.post('/createBanner', function(req, res) {
+    var option = req.body; // { _id: item._id, data: data }
+
+    var Model = models.Type10Popup;
+    if (option.bannerVer == 1) {
+        Model = models.Type10Popup;
+
+        var data = {
+            app: option.app,
+            type: 10,
+            showType: 0,
+            title: '',
+            note: 'String',
+            showLimit: 100, // số lần hiển thị tối da trong 1 ngày với 1 user
+            LQ: [0, 100000000],
+            Vip: [0, 10],
+            AG: [0, 100000000],
+            version: [0, 10],
+            os: 0, // 0: không quan tâm, 1: iOS, 2: android
+            stake: [0, 10000000], // chỉ dùng khi showtype == 1
+            requirePayment: 3,
+            priority: 0,
+            showDaily: [
+                [0, 24]
+            ],
+            date: Date(),
+            dexp: Date(),
+            url: '',
+            urllink: '',
+            countBtn: 3,
+            arrTypeBtn: [
+                "sms",
+                "sms",
+                "iap"
+            ],
+            arrUrlBtn: [
+                "http://siamplayth.com/mconfig/banner/button/btn_sms.png",
+                "http://siamplayth.com/mconfig/banner/button/btn_sms.png",
+                "http://siamplayth.com/mconfig/banner/button/btn_iap.png"
+            ],
+            arrBonus: [
+                100,
+                200,
+                300
+            ],
+            arrValue: [
+                0,
+                1,
+                0
+            ],
+            arrPos: [{
+                "x": -0.3,
+                "y": -0.3
+            }, {
+                "x": 0,
+                "y": -0.3
+            }, {
+                "x": 0.3,
+                "y": -0.3
+            }],
+        };
+    } else if (option.bannerVer == 2) {
+        Model = models.BannerV2;
+        var data = {
+            "app": option.app,
+            "type": 20,
+            "url": "http://siamplayth.com/mconfig/banner/lq_km200/300_1.png",
+            arrValue: [{
+                "type": "sms",
+                "btn": "http://siamplayth.com/mconfig/banner/button/btn_sms.png",
+                "pos": [-0.3, -0.3],
+                "ctype": 1,
+                "ccost": 10000,
+                "btype": 0,
+                "bvalue": 200,
+                "value": "40K Gold",
+                "bonus": "+80K Chip",
+                "cost": "10K VND",
+                "syntax": "mw 10000 teen NAP 52fun-ann2009-1",
+                "add": "+9029",
+                "comment": "nạp Gold, 10K VND, được 40k Gold, bonus Chip "
+            }, {
+                "type": "card",
+                "btn": "http://siamplayth.com/mconfig/banner/button/btn_card.png",
+                "pos": [
+                    0, -0.3
+                ],
+                "ctype": 1,
+                "ccost": 10000,
+                "btype": 0,
+                "bvalue": 200,
+                "value": "40K Gold",
+                "bonus": "+120K Chip",
+                "cost": "10K VND",
+                "comment": "nạp Gold, 10K VND, được 40k Gold, bonus Chip "
+            }, {
+                "type": "iap",
+                "btn": "http://siamplayth.com/mconfig/banner/button/btn_iap.png",
+                "pos": [
+                    0.3, -0.3
+                ],
+                "ctype": 1,
+                "ccost": 10000,
+                "btype": 0,
+                "bvalue": 200,
+                "value": "40K Gold",
+                "bonus": "+160K Chip",
+                "cost": "10K VND",
+                "comment": "nạp Gold, 10K VND, được 40k Gold, bonus Chip "
+            }, {
+                "type": "ok",
+                "btn": "http://siamplayth.com/mconfig/banner/button/btn_iap.png",
+                "pos": [
+                    0.3, -0.3
+                ]
+            }, {
+                "type": "video",
+                "btn": "http://siamplayth.com/mconfig/banner/button/btn_video.png",
+                "pos": [
+                    0.3, -0.3
+                ]
+            }, {
+                "type": "openlink",
+                "btn": "http://siamplayth.com/mconfig/banner/button/btn_video.png",
+                "pos": [
+                    0.3, -0.3
+                ],
+                "urllink": "http://google.com.vn"
+            }, {
+                "type": "bongda",
+                "btn": "http://siamplayth.com/mconfig/banner/button/btn_video.png",
+                "pos": [
+                    0.3, -0.3
+                ]
+            }, {
+                "type": "xoso",
+                "btn": "http://siamplayth.com/mconfig/banner/button/btn_video.png",
+                "pos": [
+                    0.3, -0.3
+                ]
+            }],
+            "title": "",
+            "note": "String",
+            "showLimit": 100,
+            "os": 0,
+            "requirePayment": 3,
+            "priority": 0,
+            "date": "2016-11-24T06:55:43.000Z",
+            "dexp": "2016-11-24T06:55:43.000Z",
+            "showType": 0,
+            "comment1": "ctype:0 nạp Chip, 1, nạp Gold",
+            "comment2": "btype:0 bonus Chip, 1, bonus Gold",
+            "stake": [
+                0,
+                10000000
+            ],
+            "version": [
+                0,
+                10
+            ],
+            "AG": [
+                0,
+                100000000
+            ],
+            "Vip": [
+                0,
+                10
+            ],
+            "LQ": [
+                0,
+                100000000
+            ]
+        };
+
+    } else {
+        res.json({ err: "wrong bannerVer " + option.bannerVer });
+        return;
+    }
+
+    var banner = new Model(data);
+    banner.save(function(err, doc) {
+        if (err) {
+            console.log("Something wrong when insert banner! ");
+            console.log(err);
+        }
+
+        res.json({ err: err, data: doc });
+    });
+
+});
+
+app.post('/deleteBanner', function(req, res) {
+    // console.log(JSON.stringify(req.body));
+    var option = req.body;
+
+    var Model = models.Type10Popup;
+    if (option.bannerVer == 1) {
+        Model = models.Type10Popup;
+    } else if (option.bannerVer == 2) {
+        Model = models.BannerV2;
+    } else {
+        res.json({ err: "wrong bannerVer " + option.bannerVer });
+        return;
+    }
+
+    Model.remove({ _id: option._id }, function(err) {
+        res.json({ err: err });
+    });
+});
 
 
 app.post('/actionLoadConfig', function(req, res) {

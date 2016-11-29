@@ -19,7 +19,7 @@
         // init
         $scope.inloading = false;
         $scope.target = {
-            apps: ["dautruong", "siam", "indo", "3c", "52"]
+            apps: ["dautruong", "3c", "52"]
         };
         $scope.target.selectedApp = $scope.target.apps[0];
 

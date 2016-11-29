@@ -13,6 +13,7 @@ var request = require('request');
 var jsonfile = require('jsonfile');
 var FB = require('fb');
 var async = require("async");
+var models = require('./models.js')
 var iprange = reload('./iprange.js')
 var utils = reload('./utils.js')
 
@@ -58,8 +59,23 @@ var sendpulse = {
     expired_date: '',
     minDurationSentNotify: 5
 }
+
 jsonfile.readFile(sendpulse.configurl, function(err, config) {
     sendpulse.config = config;
+
+    // app.use(function(req, res, next) {
+    //     var allowedOrigins = ['http://127.0.0.1:3003', 'http://localhost:3003', sendpulse.config.reportapp];
+    //     var origin = req.headers.origin;
+    //     if (allowedOrigins.indexOf(origin) > -1) {
+    //         res.setHeader('Access-Control-Allow-Origin', origin);
+    //     }
+    //     // res.header("Access-Control-Allow-Origin", "http://nguyenhaian.com:3003");
+    //     res.header("Access-Control-Allow-Origin", 'GET, OPTIONS');
+    //     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    //     res.header('Access-Control-Allow-Credentials', true);
+    //     return next();
+    // });
+
 });
 // system message được lưu vào mảng này, nhằm giảm thời gian gọi từ DB
 var sMesData0 = {}; // cái này chứa system message dạng login
@@ -71,159 +87,11 @@ var uaResult = {}; //Lưu dữ liệu thống kê tương tác theo ngày
 /*************************************************************/
 mongoose.connect('mongodb://localhost/CustomerMonitor');
 
-var SnapshotData = mongoose.model('SnapshotData', { time: String, si: Number, formattedData: {} });
-var Dist = mongoose.model("Dist", { id: String, data: { os: String, bundle: String, app: String } });
-var LoginData = mongoose.model('LoginData', { time: Date, formattedData: {} });
-// Những thông tin dưới đây chưa lọc theo version, thật nguy hiểm
-var LoginFailed = mongoose.model('LoginFailed', { time: Date, app: String, bundle: String, os: String, host: String, gameid: Number, username: String, errorcode: Number, errormsg: String, d: Number });
-var LoadConfig = mongoose.model('LoadConfig', { time: Date, app: String, bundle: String, os: String, 'r1': Number, 'r2': Number, 'r3': Number, 'r4': Number, 'r5': Number });
-var LoginSuccess = mongoose.model('LoginSuccess', { time: Date, app: String, bundle: String, os: String, 'd1r1': Number, 'd1r2': Number, 'd1r3': Number, 'd1r4': Number, 'd1r5': Number, 'd2r1': Number, 'd2r2': Number, 'd2r3': Number, 'd2r4': Number, 'd2r5': Number });
-var LoginReport = mongoose.model('LoginReport', { time: Date, duration: Number, apps: [] });
-// {'event':'payment_success', type:type, amount:amount, d:0.1}
-// {'event':'payment_failed', type:type, amount:amount, errcode:'', d:0.1}
-// {'event':'send_sms', add:'+8028'}
-var OpenPayment = mongoose.model('OpenPayment', { time: Date, app: String, bundle: String, os: String, fromScene: String, vip: Number, gold: Number, duration: Number }); // -> chưa ghi
-var PaymentSuccess = mongoose.model('PaymentSuccess', { time: Date, app: String, bundle: String, os: String, type: String, amount: Number, d: Number });
-var PaymentFailed = mongoose.model('PaymentFailed', { time: Date, app: String, bundle: String, os: String, type: String, amount: Number, errcode: String, d: Number });
-var SendSMS = mongoose.model('SendSMS', { time: Date, app: String, bundle: String, os: String, add: String });
-
-var SiamAction = mongoose.model('SiamAction', { date: Date, clicksuggestdummy: Number, showsuggestdummy: Number, timeleftdummy: {}, timeplaydummy: {} });
-
-var SMessage = mongoose.model('SMessage', { app: String, date: Date, type: Number, title: String, url: String, urllink: String, pos: { x: Number, y: Number } });
-var GreetingPopup = mongoose.model('GreetingPopup', {
-    type: Number,
-    title: String,
-    LQ: [Number],
-    Vip: [Number],
-    AG: [Number],
-    showLimit: Number,
-    requirePayment: Number,
-    priority: Number,
-    videoWatched: [Number],
-    vipchange: [Number],
-    st1_stake: [Number],
-    st1_game: [Number],
-    date: Date,
-    dexp: Date,
-    app: String,
-    url: String,
-    urllink: String,
-    countBtn: Number,
-    valueSms: Number,
-    valueCard: Number,
-    valueIAP: Number,
-    bonusSms: Number,
-    bonusCard: Number,
-    bonusIAP: Number,
-    showPopup: Boolean,
-    arrUrlBtn: [String],
-    arrPos: [],
-    result: {
-        //     {
-        //     clickButtonBanner: Number,
-        //     closeBanner: Number,
-        //     clickButtonIAP: Number,
-        //     clickButtonSms: Number,
-        //     clickButtonCard: Number
-        // }
-    }
-});
-
-// requirePayment:
-// 0 -> chưa nạp tiền -> hiển thị banner này. 
-// 1 -> nạp tiền rồi -> ko hiển thị banner này.
-// 2 -> nạp tiền rồi -> hiển thị banner này.
-// 3 -> ko quan tâm
-var Type10Popup = mongoose.model('Type10Popup', {
-    app: String,
-    type: Number,
-    showType: Number, // 0: login, 1: lúc hết tiền
-    title: String,
-    note: String,
-    showLimit: Number, // số lần hiển thị tối da trong 1 ngày với 1 user
-    LQ: [Number],
-    Vip: [Number],
-    AG: [Number],
-    version: [Number],
-    os: Number, // 0: không quan tâm, 1: iOS, 2: android
-    stake: [Number], // chỉ dùng khi showtype == 1
-    requirePayment: Number,
-    priority: Number,
-    videoWatched: [Number],
-    vipchange: [Number],
-    st1_stake: [Number],
-    st1_game: [Number],
-    date: Date,
-    dexp: Date,
-    url: String,
-    urllink: String,
-    countBtn: Number,
-    arrValue: [Number],
-    arrBonus: [Number],
-    arrUrlBtn: [String],
-    arrTypeBtn: [String],
-    arrPos: [],
-    result: {}
-});
-
-var CCU = mongoose.model('CCU', { date: Date, si: Number, app: {}, ip: {} });
-
-// chuẩn bị thống kê lượt cài đặt ở đây?
-// d1: createdDate, d2: lastActiveDate, 
-// disid: [{id:Number, lastActive:Date}]
-// device: [{id:Number, lastActive:Date}]
-// fFB: [Number]
-var MUser = mongoose.model('User', {
-    uid: Number,
-    app: String,
-    operator: Number,
-    email: String,
-    name: String, // không biết có nên thêm vip và gold vào ko
-    vip: Number,
-    gold: Number,
-    lq: Number,
-    lqc: [{ d: Date, lq: Number, plus: Number }], // mảng thay đổi LQ
-    increaseLQ: Number, // -> tính lại increaseLQ theo từng lần thay đổi, ko tính theo lần đăng nhập nữa.
-    popupHasShowed: {}, // số popup đã nhận đc trong ngày.
-    loginCount: Number,
-    fbName: String,
-    fbID: String,
-    d1: Date,
-    d2: Date,
-    disid: [], // list disid mà user đã active
-    dev: [], // list device mà user đã active
-    ip: [],
-    lDisid: String, // disid cuối cùng user active
-    lDev: String, // Device cuối cùng mà user active
-    lIP: String,
-    fFB: [], // danh sách nhanh các bạn từ fFB cũng chơi game, limit 200 bạn
-    fFBSize: Number, // để truy vấn nhanh
-    // videoWatched: Number,
-    // ban đầu fG bao gồm fFB, fG: [{fbid:Number}]
-    // sau đó sẽ đc cập nhật thành, fG: [{fbid:Number, uid:Number, name:String, }]
-    lastUpdateFB: Date,
-    lastSentNotify: Date,
-    // sMsg: [{ mid: String, beh: Number, date: Date }], // danh sách system message -> ko cần thiết lắm
-    // beh:0 - đã gửi, 1 - in, 2 - out
-    // date: ngày user có tương tác, dexp: ngày mà msg hết hiệu lực, nên xóa trong mảng này đi
-    // lastGame:{gid:String, stake:Number},
-    cp: [{ pid: String, gid: Number, n: String, c: Number, d: Date }], // danh sách player hay choi cùng, Ghi vào Db lúc user thoát
-    // gid: gameid, n:name, c: count, d: last date phát sinh ván chơi cùng
-    fl: [{ pid: String, gid: Number, n: String, d: Date }] // follow list
-        // đối với biến user,
-        // player đc chọn sẽ đưa vào follow list.
-        // d: ngày kết bạn
-});
-
-var UAResult = mongoose.model('UAResult', {
-    event: String,
-    result: {}
-});
 // init data when server startup
 /*************************************************************/
 var lastHours = moment().subtract(1, 'hours').format("YYYY-MM-DD HH:mm:ss");
 
-SnapshotData.find({})
+models.SnapshotData.find({})
     .select('time formattedData')
     // .where('time').gt(lastHours)
     .sort({ time: -1 })
@@ -234,7 +102,7 @@ SnapshotData.find({})
         console.log("timelineFormattedData length " + docs.length);
     });
 
-Dist.find({})
+models.Dist.find({})
     // .select({ id: 1, data: 1, _id: 0 })
     .lean().exec(function(err, docs) {
         if (err) return console.log(err);
@@ -274,7 +142,7 @@ var getGPAsycn = {
     }
 };
 
-async.map([SMessage, GreetingPopup, Type10Popup], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
+async.map([models.SMessage, models.GreetingPopup, models.Type10Popup], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
     if (err) {
         res.send(JSON.stringify(err, null, 3));
         return;
@@ -321,16 +189,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 app.use(function(req, res, next) {
-    var allowedOrigins = ['http://127.0.0.1:3003', 'http://localhost:3003', sendpulse.config.reportapp];
-    var origin = req.headers.origin;
-    if (allowedOrigins.indexOf(origin) > -1) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    }
-    // res.header("Access-Control-Allow-Origin", "http://nguyenhaian.com:3003");
-    res.header("Access-Control-Allow-Origin", 'GET, OPTIONS');
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-    res.header('Access-Control-Allow-Credentials', true);
-    return next();
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
 });
 
 app.set('view engine', 'ejs');
@@ -403,7 +264,7 @@ function addDistInfo(_info, app) {
             bundle: _info.bundle,
             app: app // update 15/10/16 op: _info.app || app
         };
-        var dist = new Dist({ id: _distid, data: distsInfo[_distid] });
+        var dist = new models.Dist({ id: _distid, data: distsInfo[_distid] });
         dist.save(function(err, logDoc) {
             if (err) return console.error(err);
             console.log('+dist');
@@ -415,7 +276,7 @@ function addDistInfo(_info, app) {
             bundle: _info.bundle,
             app: app // update 15/10/16 op: _info.app || app
         };
-        Dist.update({ id: _distid }, { $set: { data: distsInfo[_distid] } }, {}, function(err, logDoc) {
+        models.Dist.update({ id: _distid }, { $set: { data: distsInfo[_distid] } }, {}, function(err, logDoc) {
             if (err) return console.error(err);
             console.log('*dist');
         });
@@ -562,7 +423,7 @@ function sendNotifyToFriendsOfUser(user) {
     _.forEach(iuser.fFB, function(friendItem) {
         // trySendToFriend(friendItem.id);
         // 1. tìm các user khác là bạn ở trong list.
-        MUser.findOne({ fbID: friendItem.id }).exec(function(err, ruser) {
+        models.MUser.findOne({ fbID: friendItem.id }).exec(function(err, ruser) {
             if (err) {
                 console.log('find { fbID: friendItem.id } err : ' + JSON.stringify(err));
             } else if (ruser) {
@@ -614,13 +475,13 @@ function sendNotifyToFriendsOfUser(user) {
                     // request(options, callback);
 
                     // if (user) user.lastSentNotify = new Date(); --> đoạn này bị sai, cần cẩn thận, ta chỉ quan tâm đến ruser mà thôi.
-                    MUser.findOneAndUpdate({ _id: ruser._id }, {
+                    models.MUser.findOneAndUpdate({ _id: ruser._id }, {
                         $set: {
                             lastSentNotify: new Date(),
                         }
                     }, { new: true }, function(err, doc) {
                         if (err) {
-                            console.log("MUser update lastSentNotify failed!");
+                            console.log("models.MUser update lastSentNotify failed!");
                         }
                     });
                 }
@@ -696,7 +557,7 @@ function captureUserAction(socket, user, user_update) {
                     // kiểm tra những sMes mà user đã nhận so với sMes của server
                     // order lại thứ tự nhận rồi emit về cho user
                     var sMes = sMesData0[user.app];
-                    utils.sendPopups(socket, MUser, user, sMes);
+                    utils.sendPopups(socket, models.MUser, user, sMes);
 
                     // kiểm tra firstlogin để trả về news
                     // var YESTERDAY = moment().clone().subtract(1, 'days').startOf('day');
@@ -788,7 +649,7 @@ function captureUserAction(socket, user, user_update) {
                     }
 
                     if (user.hasOwnProperty('_id')) {
-                        MUser.findOneAndUpdate({ _id: user._id }, {
+                        models.MUser.findOneAndUpdate({ _id: user._id }, {
                             $set: data
                         }, { new: true }, function(err, doc) {
                             if (err) {
@@ -811,7 +672,7 @@ function captureUserAction(socket, user, user_update) {
                 var sMes = sMesData2[user.app];
                 // user.lastGame = { gameid: user.gameid, stake: stake };
                 sMes = utils.filterShowType2(sMes, user);
-                utils.sendPopups(socket, MUser, user, sMes);
+                utils.sendPopups(socket, models.MUser, user, sMes);
             }
         }
         // 3. Tình Huống thoát game cũng đo được, nhưng đo chỗ khác.
@@ -844,7 +705,7 @@ function captureUserAction(socket, user, user_update) {
     //     data.vip = user_update.vip;
     //     data.gold = user_update.gold;
 
-    //     var appnPayment = new OpenPayment(data);
+    //     var appnPayment = new models.OpenPayment(data);
     //     appnPayment.save(function(err, logDoc) {
     //         if (err) return console.error(err);
     //     });
@@ -890,7 +751,7 @@ app.get('/users/:username', function(req, res) {
     });
 
     if (_.isEmpty(result)) {
-        MUser.findOne({ name: username }).exec(function(err, ruser) {
+        models.MUser.findOne({ name: username }).exec(function(err, ruser) {
             res.setHeader('Content-Type', 'application/json');
             res.send(JSON.stringify({ status: 'OFFLINE', user: ruser }, null, 3));
         });
@@ -935,9 +796,9 @@ app.post('/testevent', function(req, res) {
     _.forEach(connectedDevices, function(device, socketid) {
         if (_.has(device, 'username') && device.username == username) {
             // if (req.body.event == 'news') {
-            //     utils.sendPopups(clientdt.to(socketid), MUser, device, req.body.data);
-            //     utils.sendPopups(client52.to(socketid), MUser, device, req.body.data);
-            //     utils.sendPopups(client3C.to(socketid), MUser, device, req.body.data);
+            //     utils.sendPopups(clientdt.to(socketid), models.MUser, device, req.body.data);
+            //     utils.sendPopups(client52.to(socketid), models.MUser, device, req.body.data);
+            //     utils.sendPopups(client3C.to(socketid), models.MUser, device, req.body.data);
             // } else {
             client52.to(socketid).emit('event', req.body);
             clientdt.to(socketid).emit('event', req.body);
@@ -964,7 +825,7 @@ app.get('/sendpulse', function(req, res) {
 app.get('/sMes', function(req, res) {
     utils = reload('./utils.js');
 
-    async.map([SMessage, GreetingPopup, Type10Popup], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
+    async.map([models.SMessage, models.GreetingPopup, models.Type10Popup], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
         if (err) {
             res.send(JSON.stringify(err, null, 3));
             return;
@@ -1026,7 +887,7 @@ app.get('/count', function(req, res) {
 
 app.get('/timelineData', function(req, res) {
     res.json(timelineFormattedData);
-    // SnapshotData.find({})
+    // models.SnapshotData.find({})
     //     .select({ "time": 1, "formattedData": 1, "_id": 0 })
     //     .sort({ time: -1 })
     //     .exec(function(err, docs) {
@@ -1276,7 +1137,7 @@ function addOrUpdateUserToDB(iuser, callback) {
     var idid = iuser.did ? iuser.did : 'undefined';
     if (idid.length < 10)
         idid = "malformed";
-    MUser.findOne({ uid: iuser.userid, app: iuser.app }).exec(function(err, ruser) {
+    models.MUser.findOne({ uid: iuser.userid, app: iuser.app }).exec(function(err, ruser) {
         if (err) {
             console.log('err: ' + JSON.stringify(err));
         } else if (!ruser) {
@@ -1301,7 +1162,7 @@ function addOrUpdateUserToDB(iuser, callback) {
             if (iuser.hasOwnProperty('vip')) data.vip = iuser.vip;
             if (iuser.hasOwnProperty('lq')) data.lq = iuser.lq;
 
-            var mUser = new MUser(data);
+            var mUser = new models.MUser(data);
             mUser.save(function(err, doc) {
                 if (err) {
                     console.log("Something wrong when insert mUser! ");
@@ -1410,7 +1271,7 @@ function addOrUpdateUserToDB(iuser, callback) {
             if (iuser.hasOwnProperty('vip')) data.vip = iuser.vip;
             if (iuser.hasOwnProperty('lq')) data.lq = iuser.lq;
 
-            MUser.findOneAndUpdate({ _id: ruser._id }, {
+            models.MUser.findOneAndUpdate({ _id: ruser._id }, {
                 $set: data
             }, { new: true }, function(err, doc) {
                 if (err) {
@@ -1504,7 +1365,7 @@ function getFBExtraData(FB, iuser, callback) {
             //     summary: { total_count: 405 }
             // }
 
-            MUser.findOneAndUpdate({ uid: iuser.userid, app: iuser.app }, {
+            models.MUser.findOneAndUpdate({ uid: iuser.userid, app: iuser.app }, {
                 $set: {
                     lastUpdateFB: new Date(),
                     fbName: res0.name,
@@ -1696,7 +1557,7 @@ function handleConnection(socket, app) {
 
                 data.time = new Date();
                 _.extend(data, distsInfo[user.disid]);
-                var loginFailed = new LoginFailed(data);
+                var loginFailed = new models.LoginFailed(data);
                 loginFailed.save(function(err, logDoc) {
                     if (err) return console.error(err);
                     console.log('+login_failed');
@@ -1706,7 +1567,7 @@ function handleConnection(socket, app) {
                 // {'event':'payment_success', type:type, amount:amount, d:0.1};
                 data.time = new Date();
                 _.extend(data, distsInfo[user.disid]);
-                var paymentSuccess = new PaymentSuccess(data);
+                var paymentSuccess = new models.PaymentSuccess(data);
                 paymentSuccess.save(function(err, logDoc) {
                     if (err) return console.error(err);
                     console.log('+payment_success');
@@ -1716,7 +1577,7 @@ function handleConnection(socket, app) {
                 // {'event':'payment_failed', type:type, amount:amount, errcode:'', d:0.1};
                 data.time = new Date();
                 _.extend(data, distsInfo[user.disid]);
-                var paymentFailed = new PaymentFailed(data);
+                var paymentFailed = new models.PaymentFailed(data);
                 paymentFailed.save(function(err, logDoc) {
                     if (err) return console.error(err);
                     console.log('+payment_failed');
@@ -1726,7 +1587,7 @@ function handleConnection(socket, app) {
                 // {'event':'send_sms', add:'+8028'};
                 data.time = new Date();
                 _.extend(data, distsInfo[user.disid]);
-                var sendSMS = new SendSMS(data);
+                var sendSMS = new models.SendSMS(data);
                 sendSMS.save(function(err, logDoc) {
                     if (err) return console.error(err);
                     console.log('+send_sms');
@@ -1753,7 +1614,7 @@ function handleConnection(socket, app) {
                 var sMes = sMesData1[user.app];
                 user.lastGame = { gameid: user.gameid, stake: stake };
                 sMes = utils.filterShowType1(sMes, user.gameid, gold, user.vip, stake);
-                utils.sendPopups(socket, MUser, user, sMes);
+                utils.sendPopups(socket, models.MUser, user, sMes);
             case 'videoCount':
                 user.videoWatched = data.videoCurrent;
                 break;
@@ -1932,13 +1793,13 @@ setInterval(function() {
     timelineFormattedData.unshift({ time: new Date(), formattedData: copy });
 
     if (loopcount > 2 * 20) { // sau 20' khởi động server tracking mới bắt đầu ghi dữ liệu
-        var snapshotData = new SnapshotData({ time: new Date(), si: indexLoop, formattedData: copy });
+        var snapshotData = new models.SnapshotData({ time: new Date(), si: indexLoop, formattedData: copy });
         snapshotData.save(function(err, logDoc) {
             if (err) return console.error(err);
-            console.log('+SnapshotData');
+            console.log('+models.SnapshotData');
         });
         var ccus = getccus();
-        var ccu = new CCU({ date: new Date(), si: indexLoop, app: ccus.c_ccus_byapp, ip: ccus.c_ccus_byip });
+        var ccu = new models.CCU({ date: new Date(), si: indexLoop, app: ccus.c_ccus_byapp, ip: ccus.c_ccus_byip });
         ccu.save(function(err, doc) {
             if (err) return console.error("ccu.save err: " + JSON.stringify(err));
         });
@@ -1970,7 +1831,7 @@ setInterval(function() {
         return;
     siamActions['date'] = new Date();
 
-    var siamAction = new SiamAction(siamActions); // ######
+    var siamAction = new models.SiamAction(siamActions); // ######
     siamAction.save(function(err, docs) {
         if (err) return console.error(err);
     });
@@ -1989,14 +1850,14 @@ setInterval(function() {
     var time = moment().subtract(2.5, 'minutes')._d; // -> 2.5 nếu là 5'
 
     // Lưu snapshot vào db
-    var loginData = new LoginData({ time: time, formattedData: avgLoginData });
+    var loginData = new models.LoginData({ time: time, formattedData: avgLoginData });
     loginData.save(function(err, logDoc) {
         if (err) return console.error(err);
         console.log('+SnapshotAvgLoginData');
     });
 
     // avgNetworkPerformanceData.load_config['time'] = time;
-    // var loadConfig = new LoadConfig(avgNetworkPerformanceData.load_config);
+    // var loadConfig = new models.LoadConfig(avgNetworkPerformanceData.load_config);
     // loadConfig.save(function(err, logDoc) {
     //     if (err) return console.error(err);
     //     console.log('+SnapshotAvgLoadConfigData');
@@ -2006,7 +1867,7 @@ setInterval(function() {
         value.time = time;
         _.extend(value, distsInfo[key]);
 
-        var loadConfig = new LoadConfig(value); // ######
+        var loadConfig = new models.LoadConfig(value); // ######
         loadConfig.save(function(err, docs) {
             if (err) return console.error(err);
         });
@@ -2022,7 +1883,7 @@ setInterval(function() {
     _.forEach(avgNetworkPerformanceData.login_success, function(value, key) {
         value.time = time;
         _.extend(value, distsInfo[key]);
-        var loginSuccess = new LoginSuccess(value); // ######
+        var loginSuccess = new models.LoginSuccess(value); // ######
         loginSuccess.save(function(err, logDoc) {
             if (err) return console.error(err);
         });
@@ -2046,7 +1907,7 @@ setInterval(function() {
             }
         }
 
-        var loginReport = new LoginReport(login_report); // ######
+        var loginReport = new models.LoginReport(login_report); // ######
         loginReport.save(function(err, logDoc) {
             if (err) return console.error(err);
         });
@@ -2087,22 +1948,22 @@ function saveSMesResult() {
             //     "result.1.clickButtonIAP": 2,
             //     "result.1.clickButtonCard": 6
             // }
-            GreetingPopup.update({ _id: item.id }, { $inc: item.data }, function(err, res) {
+            models.GreetingPopup.update({ _id: item.id }, { $inc: item.data }, function(err, res) {
                 // callback(err, res);
                 if (err) {
-                    console.log("GreetingPopup.update err: " + JSON.stringify(err));
+                    console.log("models.GreetingPopup.update err: " + JSON.stringify(err));
                     console.log(item);
                 }
             });
 
-            SMessage.update({ _id: item.id }, { $inc: item.data }, function(err, res) {
+            models.SMessage.update({ _id: item.id }, { $inc: item.data }, function(err, res) {
                 if (err)
-                    console.log("SMessage.update err: " + JSON.stringify(err));
+                    console.log("models.SMessage.update err: " + JSON.stringify(err));
             });
 
-            Type10Popup.update({ _id: item.id }, { $inc: item.data }, function(err, res) {
+            models.Type10Popup.update({ _id: item.id }, { $inc: item.data }, function(err, res) {
                 if (err)
-                    console.log("Type10Popup.update err: " + JSON.stringify(err));
+                    console.log("models.Type10Popup.update err: " + JSON.stringify(err));
             });
 
         };
@@ -2131,10 +1992,10 @@ function saveSMesResult() {
             //     "result.1.clickButtonIAP": 2,
             //     "result.1.clickButtonCard": 6
             // }
-            UAResult.update({ event: item.event }, { $inc: item.data }, function(err, res) {
+            models.UAResult.update({ event: item.event }, { $inc: item.data }, function(err, res) {
                 // callback(err, res);
                 if (err) {
-                    console.log("UAResult.update err: " + JSON.stringify(err));
+                    console.log("models.UAResult.update err: " + JSON.stringify(err));
                     console.log(item);
                 }
             });
@@ -2146,7 +2007,7 @@ function saveSMesResult() {
     }
 
     // sau khi có dữ liệu đủ, mình cập nhật lại gp mới, vì đã có thể thêm hoặc xóa gp rồi.
-    async.map([SMessage, GreetingPopup, Type10Popup], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
+    async.map([models.SMessage, models.GreetingPopup, models.Type10Popup], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
         if (err) {
             res.send(JSON.stringify(err, null, 3));
             return;
@@ -2351,7 +2212,7 @@ function sendWarningMail(maillist, appid, msg, fullreport, type) {
         var email = {
             "html": "<h1>Example text</h1>",
             "text": msg + "\n" + fullreport,
-            "subject": type ? "DST Warning System CCU down rate" : "DST Warning System Login Failed",
+            "subject": type ? "DST Warning System CCU_value down rate" : "DST Warning System Login Failed",
             "from": { "name": "DST Game Notify System", "email": "nguyenhaian@outlook.com" },
             "to": maillist,
             "bcc": []

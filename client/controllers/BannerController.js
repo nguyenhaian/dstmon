@@ -18,7 +18,7 @@
     function BannerController($scope, $http, $timeout, socket, $compile) {
         // init
         $scope.target = {
-            apps: ["siam", "indo", "dautruong", "3c", "52"]
+            apps: ["dautruong", "3c", "52"]
         };
         $scope.target.selectedApp = $scope.target.apps[0];
 
@@ -27,6 +27,7 @@
         $scope.inloading = false;
         $scope.result = {};
         $scope.loadstatus = {};
+        $scope.bannerVer = 0;
 
         $scope.notix = {
             "_id": "582eb298f89ae2aa08f50ad4",
@@ -462,7 +463,11 @@
         // end init
 
         // default action
-        $scope.getBanner($scope.queryCommand, $scope.querySelect, $scope.queryLimit);
+        $scope.initBannerVer = function(ver){
+            $scope.bannerVer = ver;
+            $scope.getBanner($scope.queryCommand, $scope.querySelect, $scope.queryLimit);    
+        }
+        
     }
 
 })();
