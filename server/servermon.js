@@ -1,3 +1,4 @@
+var reload = require('require-reload')(require);
 var express = require('express');
 var app = express();
 var server = require('http').createServer(app);
@@ -14,6 +15,7 @@ var async = require("async");
 var json2csv = require('json2csv');
 var jsonfile = require('jsonfile');
 var models = require('./models.js')
+var appconfig = reload('./appconfig.js')
 
 var onesignal = {
     groups: [{
@@ -66,13 +68,6 @@ var mssqlconfig = {
 
 sql.on('error', function(err) {
     console.log({ err: err })
-});
-
-var appconfig = {
-    configurl: './config.params.json'
-}
-jsonfile.readFile(appconfig.configurl, function(err, config) {
-    appconfig.config = config;
 });
 
 function createOneSignalMessage(campaignid, targetapp, recipient) {
@@ -1005,7 +1000,7 @@ function performancereport(req, res) {
 
     var options = {
         method: 'GET',
-        url: appconfig.config.liveapp + '/ccus',
+        url: appconfig.socketapp + '/ccus',
         headers: {
             'Content-Type': 'application/json'
         }
@@ -1472,7 +1467,7 @@ app.post('/createBanner', function(req, res) {
             "app": option.app,
             "type": 20,
             "url": "http://siamplayth.com/mconfig/banner/lq_km200/300_1.png",
-            arrValue: [{
+            arrButton: [{
                 "type": "sms",
                 "btn": "http://siamplayth.com/mconfig/banner/button/btn_sms.png",
                 "pos": [-0.3, -0.3],

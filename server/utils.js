@@ -41,7 +41,7 @@ function shuffle(array) {
     return array;
 }
 
-function sendPopups(socket, MUser, user, sMes) {
+function sendPopups(socket, MUser, user, sMes, appconfig) {
     // return true nếu bắn thành công, return false ngược lại
     if (!sMes || sMes.length < 1)
         return false;
@@ -170,10 +170,12 @@ function sendPopups(socket, MUser, user, sMes) {
                     user.popupHasShowed[item.showType] = 0;
                 }
                 user.popupHasShowed[item.showType]++;
-                
+
                 if (_.has(item, 'result'))
                     delete item.result;
-                
+
+                item = formatBannerButton(user, appconfig, item);
+
                 return item;
             });
 
@@ -343,3 +345,87 @@ function handleReceiveGift(uaResult, user, event, value) {
 }
 
 exports.sendPopups = sendPopups;
+
+exports.formatBannerButton = function(user, appconfig, bannerItem) { // op là provider, ví dụ: VIETTEL
+    var app = user.app;
+    var op = user.provider;
+    if (!op) op = 'unknown';
+    var username = user.username;
+    // "type": "sms",
+    // "btn": "http://siamplayth.com/mconfig/banner/button/btn_sms.png",
+    // "pos": [-0.3, -0.3],
+    // "ctype": 1,
+    // "ccost": 10000,
+    // "btype": 0,
+    // "bvalue": 200,
+    // "bstyle": 200,
+
+    if (bannerItem.type == 20 && _.has(bannerItem, 'arrButton')) {
+        var paymentconfig = appconfig[app].paymentconfig;
+        bannerItem.arrButton = bannerItem.arrButton.map(function(button, btnindex) {
+            var paymentProviders = [];
+            if (button.type == "sms") {
+                var paymentProviders = paymentconfig["sms_items"];
+            }
+            if (button.type == "card") {
+                var paymentProviders = paymentconfig["card_items"];
+            }
+            if (button.type == "iap") {
+                var paymentProviders = paymentconfig["iap_items"];
+            }
+
+            for (var i = paymentProviders.length - 1; i >= 0; i--) {
+                var provider = paymentProviders[i];
+                console.log("pare provider " + op + '  vs   ' + provider.op);
+                if (provider.op == op) {
+                    console.log("match provider ", op);
+                    var items = provider.items;
+                    // [{
+                    // old: "30K",
+                    // new: "40K",
+                    // p: "+10K",
+                    // cost: "10,000 VND",
+                    // add: "9029",
+                    // content: "Qk 10000 bp2 %user% nap dautruong",
+                    // ccost: 10000
+                    // },
+                    // {
+                    // old: "45K",
+                    // new: "60K",
+                    // p: "+15K",
+                    // cost: "15,000 VND",
+                    // add: "9029",
+                    // content: "Qk 15000 bp2 %user% nap dautruong"
+                    // }]
+                    _.forEach(items, function(item) {
+                        if (item.ccost == button.ccost) {
+                            // "value": "40K Gold",
+                            // "bonus": "+80K Chip",
+                            // "cost": "10K VND",
+                            // "syntax": "mw 10000 teen NAP 52fun-ann2009-1",
+                            // "add": "+9029",
+
+                            button.value = item["old"];
+                            if (button.bstyle == 1)
+                                button.bonus = item["new"];
+                            else
+                                button.bonus = item["p"];
+                            button.cost = item["cost"];
+
+                            if (button.type == "sms") {
+                                button.add = item["add"];
+                                button.content = _.replace(item["syntax"], /%user%/g, username);
+                            }
+                            // break;
+                            return false;
+                        }
+                    });
+                    break;
+                }
+            };
+
+            return button;
+        });
+    }
+    return bannerItem;
+}

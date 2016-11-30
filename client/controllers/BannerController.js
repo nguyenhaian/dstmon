@@ -107,6 +107,9 @@
                 var jsoncommand = JSON.parse(command);
                 jsoncommand.app = app;
                 $scope.queryCommand = JSON.stringify(jsoncommand);
+
+                // TODO: Check hỏi xem nếu có thay đổi ở các document thì hỏi họ có muốn save ko.
+                $scope.query($scope.queryCommand, $scope.querySelect, $scope.queryLimit);
             } catch (e) {
                 if (!command || command.length < 3) {
                     $scope.queryCommand = JSON.stringify({ app: $scope.target.selectedApp });

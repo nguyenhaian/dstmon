@@ -16,16 +16,29 @@ var async = require("async");
 var models = require('./models.js')
 var iprange = reload('./iprange.js')
 var utils = reload('./utils.js')
+var appconfig = reload('./appconfig.js')
 
 /*************************************************************/
 // socketio namespaces
-var client3C = io.of('/client3C'),
-    client52 = io.of('/client52'),
-    clientdt = io.of('/clientdt'),
-    clientuwin = io.of('/clientuwin'),
-    clientsiam = io.of('/clientsiam'),
-    clientindo = io.of('/clientindo'),
-    tracker = io.of('/tracker');
+var tracker = io.of('/tracker');
+// client namespace
+var cns = appconfig.socketclients.map(function(clientns, index) {
+    clientns = '/' + clientns;
+
+    // ***** đoạn này để trả về response 200 cho client ***** //
+    app.get(clientns, function(req, res) {
+        res.json({});
+    });
+
+    var client = io.of(clientns);
+    client.on('connection', function(socket) {
+        handleConnection(socket, appconfig.clientsname[index]);
+    });
+
+    return client;
+});
+
+appconfig.loadpaymentconfig(appconfig);
 
 // socketio vars
 var connectedDevices = {};
@@ -49,34 +62,11 @@ var loopcount = 0; // phục vụ việc lưu vào DB muộn, để có dữ li�
 var indexLoop = 0; // phục vụ việc làm thưa DB khi query
 
 var sendpulse = {
-    add_getac: 'https://api.sendpulse.com/oauth/access_token',
-    add_sendmail: 'https://api.sendpulse.com/smtp/emails',
-    // maillist: './config.maillist.json',
-    // threshold: './config.threshold.json',
-    configurl: './config.params.json',
     token_type: '',
     access_token: '',
-    expired_date: '',
-    minDurationSentNotify: 5
+    expired_date: ''
 }
 
-jsonfile.readFile(sendpulse.configurl, function(err, config) {
-    sendpulse.config = config;
-
-    // app.use(function(req, res, next) {
-    //     var allowedOrigins = ['http://127.0.0.1:3003', 'http://localhost:3003', sendpulse.config.reportapp];
-    //     var origin = req.headers.origin;
-    //     if (allowedOrigins.indexOf(origin) > -1) {
-    //         res.setHeader('Access-Control-Allow-Origin', origin);
-    //     }
-    //     // res.header("Access-Control-Allow-Origin", "http://nguyenhaian.com:3003");
-    //     res.header("Access-Control-Allow-Origin", 'GET, OPTIONS');
-    //     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-    //     res.header('Access-Control-Allow-Credentials', true);
-    //     return next();
-    // });
-
-});
 // system message được lưu vào mảng này, nhằm giảm thời gian gọi từ DB
 var sMesData0 = {}; // cái này chứa system message dạng login
 var sMesData1 = {}; // message dạng hết tiền
@@ -451,7 +441,7 @@ function sendNotifyToFriendsOfUser(user) {
 
                 var options = {
                     method: 'POST',
-                    url: sendpulse.config.reportapp + '/notify',
+                    url: appconfig.manapp + '/notify',
                     headers: {
                         'Content-Type': 'application/json'
                     },
@@ -468,8 +458,8 @@ function sendNotifyToFriendsOfUser(user) {
                 }
 
                 // mặc định khoảng thời gian tối thiểu một user nhận notity liên tiếp là 5'
-                if (!sendpulse.minDurationSentNotify) sendpulse.minDurationSentNotify = 5;
-                if (!ruser.lastSentNotify || moment.duration(moment().diff(ruser.lastSentNotify)).asMinutes() > sendpulse.minDurationSentNotify) {
+                if (!appconfig.threshold.minDurationSentNotify) appconfig.threshold.minDurationSentNotify = 5;
+                if (!ruser.lastSentNotify || moment.duration(moment().diff(ruser.lastSentNotify)).asMinutes() > appconfig.threshold.minDurationSentNotify) {
                     // console.log('----> sendNotifyToFriendsOfUser ' + cmessage);
                     // TODO: An, tạm thời dừng bắn notify
                     // request(options, callback);
@@ -557,7 +547,7 @@ function captureUserAction(socket, user, user_update) {
                     // kiểm tra những sMes mà user đã nhận so với sMes của server
                     // order lại thứ tự nhận rồi emit về cho user
                     var sMes = sMesData0[user.app];
-                    utils.sendPopups(socket, models.MUser, user, sMes);
+                    utils.sendPopups(socket, models.MUser, user, sMes, appconfig);
 
                     // kiểm tra firstlogin để trả về news
                     // var YESTERDAY = moment().clone().subtract(1, 'days').startOf('day');
@@ -672,7 +662,7 @@ function captureUserAction(socket, user, user_update) {
                 var sMes = sMesData2[user.app];
                 // user.lastGame = { gameid: user.gameid, stake: stake };
                 sMes = utils.filterShowType2(sMes, user);
-                utils.sendPopups(socket, models.MUser, user, sMes);
+                utils.sendPopups(socket, models.MUser, user, sMes, appconfig);
             }
         }
         // 3. Tình Huống thoát game cũng đo được, nhưng đo chỗ khác.
@@ -742,16 +732,16 @@ app.get('/fullusers', function(req, res) {
 
 app.get('/users/:username', function(req, res) {
     var username = req.params.username;
-    var result = {};
+    var result = [];
     _.forEach(connectedDevices, function(device) {
         if (_.has(device, 'username') && device.username == username) {
-            result = device;
-            return false;
+            result.push(device);
+            // return false;
         }
     });
 
     if (_.isEmpty(result)) {
-        models.MUser.findOne({ name: username }).exec(function(err, ruser) {
+        models.MUser.find({ name: username }).exec(function(err, ruser) {
             res.setHeader('Content-Type', 'application/json');
             res.send(JSON.stringify({ status: 'OFFLINE', user: ruser }, null, 3));
         });
@@ -773,8 +763,6 @@ app.get('/checkIPVN/:ip', function(req, res) {
     res.send(JSON.stringify(result, null, 3));
 });
 
-
-
 app.get('/gpResult', function(req, res) {
     // res.json(result);
     res.setHeader('Content-Type', 'application/json');
@@ -793,33 +781,42 @@ app.post('/testevent', function(req, res) {
 
     var found = false;
     var sid = '_';
+    var bannerdata = [];
+    var body = req.body;
+    var banners = body.data;
+
+    if (body.event == 'news') {
+        if (!_.isEmpty(banners)) {
+            banners = banners.map(function(bannerItem) {
+                return utils.formatBannerButton({
+                    app: appconfig.clientsname[1],
+                    provider: 'VIETTEL',
+                    username: username
+                }, appconfig, bannerItem);
+            });
+
+            body.data = banners;
+        }
+
+        bannerdata = banners;
+    }
+
     _.forEach(connectedDevices, function(device, socketid) {
         if (_.has(device, 'username') && device.username == username) {
-            // if (req.body.event == 'news') {
-            //     utils.sendPopups(clientdt.to(socketid), models.MUser, device, req.body.data);
-            //     utils.sendPopups(client52.to(socketid), models.MUser, device, req.body.data);
-            //     utils.sendPopups(client3C.to(socketid), models.MUser, device, req.body.data);
-            // } else {
-            client52.to(socketid).emit('event', req.body);
-            clientdt.to(socketid).emit('event', req.body);
-            // clientsiam.to(socketid).emit('event', req.body);
-            // clientindo.to(socketid).emit('event', req.body);
-            client3C.to(socketid).emit('event', req.body);
-            // }
+
+            cns.map(function(client) {
+                client.to(socketid).emit('event', body);
+            });
             sid = socketid;
             found = true;
+            // ko return, như vậy là phải đi hết danh sách
             return false;
         }
     });
 
 
     res.setHeader('Content-Type', 'application/json');
-    res.send(JSON.stringify({ found: found, socketid: sid }, null, 3));
-});
-
-app.get('/sendpulse', function(req, res) {
-    res.setHeader('Content-Type', 'application/json');
-    res.send(JSON.stringify(sendpulse, null, 3));
+    res.send(JSON.stringify({ found: found, socketid: sid, body: bannerdata }, null, 3));
 });
 
 app.get('/sMes', function(req, res) {
@@ -900,27 +897,6 @@ app.get('/timelineData', function(req, res) {
 
 app.get('/timelineCount', function(req, res) {
     res.json({ timeLineDataCount: _.size(timelineFormattedData) });
-});
-
-// ***** đoạn này để trả về response 200 cho client ***** //
-
-app.get('/client3C', function(req, res) {
-    res.json({});
-});
-app.get('/client52', function(req, res) {
-    res.json({});
-});
-app.get('/clientdt', function(req, res) {
-    res.json({});
-});
-app.get('/clientuwin', function(req, res) {
-    res.json({});
-});
-app.get('/clientsiam', function(req, res) {
-    res.json({});
-});
-app.get('/clientindo', function(req, res) {
-    res.json({});
 });
 
 // ************************* END ************************* //
@@ -1035,8 +1011,8 @@ app.get('/login_report', function(req, res) {
 });
 
 function getccus() {
-    var nip = sendpulse.config.domains;
-    var gamesbyid = sendpulse.config.gamesbyid;
+    var nip = appconfig.domains;
+    var gamesbyid = appconfig.gamesbyid;
 
     var c_ccus_byip = _.cloneDeep(ccus_byip);
     _.forEach(c_ccus_byip, function(value, key) {
@@ -1078,8 +1054,8 @@ app.get('/ccus', function(req, res) {
 
 app.get('/config', function(req, res) {
     res.setHeader('Content-Type', 'application/json');
-    sendpulse.indexLoop = indexLoop;
-    res.send(JSON.stringify(sendpulse, null, 3));
+    appconfig.indexLoop = indexLoop;
+    res.send(JSON.stringify(appconfig, null, 3));
 });
 
 app.get('/ccus_view', function(req, res) {
@@ -1095,15 +1071,9 @@ app.get('/ccus_view', function(req, res) {
 });
 
 app.get('/testSendWarningMail', function(req, res) {
-    jsonfile.readFile(sendpulse.configurl, function(err, config) {
-        if (err) {
-            res.json({ err: err });
-        } else {
-            var msg = "App " + 000 + " Warning login failed rate " + 0.1;
-            sendWarningMail(config.maillist, 1, msg, { name: 'full report', content: 'test', values: [1, 2, 3, 4, 5] }, 'mailonly')
-            res.json({ status: 'ok' });
-        };
-    });
+    var msg = "App " + 000 + " Warning login failed rate " + 0.1;
+    sendWarningMail(appconfig.maillist, 1, msg, { name: 'full report', content: 'test', values: [1, 2, 3, 4, 5] }, 'mailonly')
+    res.json({ status: 'ok' });
 });
 
 app.get('/live', function(req, res) {
@@ -1614,7 +1584,7 @@ function handleConnection(socket, app) {
                 var sMes = sMesData1[user.app];
                 user.lastGame = { gameid: user.gameid, stake: stake };
                 sMes = utils.filterShowType1(sMes, user.gameid, gold, user.vip, stake);
-                utils.sendPopups(socket, models.MUser, user, sMes);
+                utils.sendPopups(socket, models.MUser, user, sMes, appconfig);
             case 'videoCount':
                 user.videoWatched = data.videoCurrent;
                 break;
@@ -1725,25 +1695,6 @@ function handleConnection(socket, app) {
     });
 }
 
-client3C.on('connection', function(socket) {
-    handleConnection(socket, '3c')
-});
-client52.on('connection', function(socket) {
-    handleConnection(socket, '52')
-});
-clientdt.on('connection', function(socket) {
-    handleConnection(socket, 'dautruong')
-});
-clientuwin.on('connection', function(socket) {
-    handleConnection(socket, 'uwin')
-});
-clientsiam.on('connection', function(socket) {
-    handleConnection(socket, 'siam')
-});
-clientindo.on('connection', function(socket) {
-    handleConnection(socket, 'indo')
-});
-
 tracker.on('connection', function(socket) {
     console.log('a tracker connected');
 
@@ -1814,16 +1765,17 @@ setInterval(function() {
     if (timelineFormattedData.length > maxlength)
         timelineFormattedData.pop();
 
+    try {
+        // load lại config
+        appconfig = reload('./appconfig.js');
+    } catch (e) {}
+
     /** TODO: xác định những bất thường */
-    jsonfile.readFile(sendpulse.configurl, function(err, config) {
-        sendpulse.config = config;
-        analyze_ccu(ccus_byapp, config, 'appid', lastRecordsCCUS);
-        analyze_ccu(ccus_byip, config, 'ip', lastRecordsCCUS);
+    analyze_ccu(ccus_byapp, appconfig, 'appid', lastRecordsCCUS);
+    analyze_ccu(ccus_byip, appconfig, 'ip', lastRecordsCCUS);
 
-        // cập nhật lại một tham số ko cần realtime
-        sendpulse.minDurationSentNotify = config.threshold.minDurationSentNotify;
-    });
-
+    // loạd lại paymentconfig
+    appconfig.loadpaymentconfig(appconfig);
 }, 30000); // 30s một lần
 
 setInterval(function() {
@@ -1892,31 +1844,30 @@ setInterval(function() {
     /** TODO: xác định những bất thường */
     // 1. thời gian login success lâu bất thường
     // 2. số lượng login failed/login success tăng
-    jsonfile.readFile(sendpulse.configurl, function(err, config) {
-        var login_report = analyze_login_api();
 
-        for (var i = 0; i < login_report.apps.length; i++) {
-            var appid = login_report.apps[i].appid;
-            var failedRate = login_report.apps[i].res.failedRate;
-            var success = login_report.apps[i].res.success;
+    var login_report = analyze_login_api();
 
-            if (failedRate > config.threshold.percentloginfailed && success > config.threshold.loginSuccessMin) {
-                // gửi mail
-                var msg = "App " + appid + " Warning login failed rate " + (failedRate * 100).toFixed(2) + "%";
-                sendWarningMail(config.maillist, appid, msg, login_report, 0);
-            }
+    for (var i = 0; i < login_report.apps.length; i++) {
+        var appid = login_report.apps[i].appid;
+        var failedRate = login_report.apps[i].res.failedRate;
+        var success = login_report.apps[i].res.success;
+
+        if (failedRate > appconfig.threshold.percentloginfailed && success > appconfig.threshold.loginSuccessMin) {
+            // gửi mail
+            var msg = "App " + appid + " Warning login failed rate " + (failedRate * 100).toFixed(2) + "%";
+            sendWarningMail(appconfig.maillist, appid, msg, login_report, 0);
         }
+    }
 
-        var loginReport = new models.LoginReport(login_report); // ######
-        loginReport.save(function(err, logDoc) {
-            if (err) return console.error(err);
-        });
-
-        // xóa avgLoginData để tính lại cho lần tiếp theo
-        lastReportTime = moment();
-        avgLoginData = {};
-        avgNetworkPerformanceData = {};
+    var loginReport = new models.LoginReport(login_report); // ######
+    loginReport.save(function(err, logDoc) {
+        if (err) return console.error(err);
     });
+
+    // xóa avgLoginData để tính lại cho lần tiếp theo
+    lastReportTime = moment();
+    avgLoginData = {};
+    avgNetworkPerformanceData = {};
 
     saveSMesResult();
 }, 1000 * 60 * 5); // 5' 1 lần
@@ -2219,7 +2170,7 @@ function sendWarningMail(maillist, appid, msg, fullreport, type) {
         };
         var options = {
             method: 'POST',
-            url: sendpulse.add_sendmail,
+            url: appconfig.add_sendmail,
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': sendpulse.token_type + ' ' + sendpulse.access_token
@@ -2245,7 +2196,7 @@ function sendWarningMail(maillist, appid, msg, fullreport, type) {
         // lấy key
         var options = {
             method: 'POST',
-            url: sendpulse.add_getac,
+            url: appconfig.add_getac,
             headers: {
                 'Content-Type': 'application/json'
             },

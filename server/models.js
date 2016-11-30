@@ -1,63 +1,159 @@
 const mongoose = require('mongoose');
 
 
-
-exports.SnapshotData = mongoose.model('SnapshotData', { time: String, si: Number, formattedData: {} });
-exports.Dist = mongoose.model("Dist", { id: String, data: { os: String, bundle: String, app: String } });
-exports.LoginData = mongoose.model('LoginData', { time: Date, formattedData: {} });
+exports.SnapshotData = mongoose.model('SnapshotData', {
+    time: { type: String, index: true },
+    si: { type: Number, index: true },
+    formattedData: {}
+});
+exports.Dist = mongoose.model("Dist", {
+    id: { type: String, index: true },
+    data: {
+        os: String,
+        bundle: String,
+        app: { type: String, index: true }
+    }
+});
+exports.LoginData = mongoose.model('LoginData', {
+    time: { type: Date, index: true },
+    formattedData: {}
+});
 // Những thông tin dưới đây chưa lọc theo version, thật nguy hiểm
-exports.LoginFailed = mongoose.model('LoginFailed', { time: Date, app: String, bundle: String, os: String, host: String, gameid: Number, username: String, errorcode: Number, errormsg: String, d: Number });
-exports.LoadConfig = mongoose.model('LoadConfig', { time: Date, app: String, bundle: String, os: String, 'r1': Number, 'r2': Number, 'r3': Number, 'r4': Number, 'r5': Number });
-exports.LoginSuccess = mongoose.model('LoginSuccess', { time: Date, app: String, bundle: String, os: String, 'd1r1': Number, 'd1r2': Number, 'd1r3': Number, 'd1r4': Number, 'd1r5': Number, 'd2r1': Number, 'd2r2': Number, 'd2r3': Number, 'd2r4': Number, 'd2r5': Number });
+exports.LoginFailed = mongoose.model('LoginFailed', {
+    time: { type: Date, index: true },
+    app: { type: String, index: true },
+    bundle: String,
+    os: String,
+    host: { type: String, index: true },
+    gameid: { type: Number, index: true },
+    username: String,
+    errorcode: Number,
+    errormsg: String,
+    d: Number
+});
+exports.LoadConfig = mongoose.model('LoadConfig', {
+    time: { type: Date, index: true },
+    app: { type: String, index: true },
+    bundle: String,
+    os: String,
+    'r1': Number,
+    'r2': Number,
+    'r3': Number,
+    'r4': Number,
+    'r5': Number
+});
+exports.LoginSuccess = mongoose.model('LoginSuccess', {
+    time: { type: Date, index: true },
+    app: { type: String, index: true },
+    bundle: String,
+    os: String,
+    'd1r1': Number,
+    'd1r2': Number,
+    'd1r3': Number,
+    'd1r4': Number,
+    'd1r5': Number,
+    'd2r1': Number,
+    'd2r2': Number,
+    'd2r3': Number,
+    'd2r4': Number,
+    'd2r5': Number
+});
 
-exports.LoginReport = mongoose.model('LoginReport', { time: Date, duration: Number, apps: [] });
+exports.LoginReport = mongoose.model('LoginReport', {
+    time: { type: Date, index: true },
+    duration: { type: Number, index: true },
+    apps: []
+});
 // {'event':'payment_success', type:type, amount:amount, d:0.1}
 // {'event':'payment_failed', type:type, amount:amount, errcode:'', d:0.1}
 // {'event':'send_sms', add:'+8028'}
-exports.OpenPayment = mongoose.model('OpenPayment', { time: Date, app: String, bundle: String, os: String, fromScene: String, vip: Number, gold: Number, duration: Number }); // -> chưa ghi
-exports.PaymentSuccess = mongoose.model('PaymentSuccess', { time: Date, app: String, bundle: String, os: String, type: String, amount: Number, d: Number });
-exports.PaymentFailed = mongoose.model('PaymentFailed', { time: Date, app: String, bundle: String, os: String, type: String, amount: Number, errcode: String, d: Number });
-exports.SendSMS = mongoose.model('SendSMS', { time: Date, app: String, bundle: String, os: String, add: String });
+exports.OpenPayment = mongoose.model('OpenPayment', {
+    time: { type: Date, index: true },
+    app: { type: String, index: true },
+    bundle: String,
+    os: String,
+    fromScene: String,
+    vip: Number,
+    gold: Number,
+    duration: Number
+}); // -> chưa ghi
+exports.PaymentSuccess = mongoose.model('PaymentSuccess', {
+    time: { type: Date, index: true },
+    app: { type: String, index: true },
+    bundle: String,
+    os: String,
+    type: String,
+    amount: Number,
+    d: Number
+});
+exports.PaymentFailed = mongoose.model('PaymentFailed', {
+    time: { type: Date, index: true },
+    app: { type: String, index: true },
+    bundle: String,
+    os: String,
+    type: String,
+    amount: Number,
+    errcode: String,
+    d: Number
+});
+exports.SendSMS = mongoose.model('SendSMS', {
+    time: { type: Date, index: true },
+    app: { type: String, index: true },
+    bundle: String,
+    os: String,
+    add: String
+});
 
-exports.SiamAction = mongoose.model('SiamAction', { date: Date, clicksuggestdummy: Number, showsuggestdummy: Number, timeleftdummy: {}, timeplaydummy: {} });
-exports.CCU = mongoose.model('CCU', { date: Date, si: Number, app: {}, ip: {} });
+exports.SiamAction = mongoose.model('SiamAction', {
+    date: { type: Date, index: true },
+    clicksuggestdummy: Number,
+    showsuggestdummy: Number,
+    timeleftdummy: {},
+    timeplaydummy: {}
+});
+exports.CCU = mongoose.model('CCU', {
+    date: { type: Date, index: true },
+    si: { type: Number, index: true },
+    app: {},
+    ip: {}
+});
 // {
 //     "type": 1,
 //     "title": "nạp gold",
 //     "url": "http://mobile.tracking.dautruong.info/img/banner/banner140916.jpg"
 // }
 
-exports.MUser = mongoose.model('User', {
-    uid: Number,
-    app: String,
+var UserScheme = new mongoose.Schema({
+    uid: { type: Number, index: true },
+    app: { type: String, index: true },
     operator: Number,
     email: String,
-    name: String, // không biết có nên thêm vip và gold vào ko
-    vip: Number,
+    name: { type: String, index: true }, // không biết có nên thêm vip và gold vào ko
+    vip: { type: Number, index: true },
     gold: Number,
     lq: Number,
     lqc: [{ d: Date, lq: Number, plus: Number }], // mảng thay đổi LQ
     increaseLQ: Number, // -> tính lại increaseLQ theo từng lần thay đổi, ko tính theo lần đăng nhập nữa.
     popupHasShowed: {}, // số popup đã nhận đc trong ngày.
-    loginCount: Number,
-    fbName: String,
-    fbID: String,
-    d1: Date,
-    d2: Date,
+    loginCount: { type: Number, index: true },
+    fbName: { type: String, index: true },
+    fbID: { type: String, index: true },
+    d1: { type: Date, index: true },
+    d2: { type: Date, index: true },
     disid: [], // list disid mà user đã active
     dev: [], // list device mà user đã active
     ip: [],
-    lDisid: String, // disid cuối cùng user active
-    lDev: String, // Device cuối cùng mà user active
-    lIP: String,
+    lDisid: { type: String, index: true }, // disid cuối cùng user active
+    lDev: { type: String, index: true }, // Device cuối cùng mà user active
+    lIP: { type: String, index: true },
     fFB: [], // danh sách nhanh các bạn từ fFB cũng chơi game, limit 200 bạn
-    fFBSize: Number, // để truy vấn nhanh
+    fFBSize: { type: Number, index: true }, // để truy vấn nhanh
     // videoWatched: Number,
     // ban đầu fG bao gồm fFB, fG: [{fbid:Number}]
     // sau đó sẽ đc cập nhật thành, fG: [{fbid:Number, uid:Number, name:String, }]
     lastUpdateFB: Date,
     lastSentNotify: Date,
-    // sMsg: [{ mid: String, beh: Number, date: Date }], // danh sách system message -> ko cần thiết lắm
+    // sMsg: [{ mid: String, beh: Number, date: { type: Date, index: true } }], // danh sách system message -> ko cần thiết lắm
     // beh:0 - đã gửi, 1 - in, 2 - out
     // date: ngày user có tương tác, dexp: ngày mà msg hết hiệu lực, nên xóa trong mảng này đi
     // lastGame:{gid:String, stake:Number},
@@ -68,6 +164,9 @@ exports.MUser = mongoose.model('User', {
         // player đc chọn sẽ đưa vào follow list.
         // d: ngày kết bạn
 });
+UserScheme.index({ uid: 1, app: 1 }, { unique: true });
+exports.MUser = mongoose.model('User', UserScheme);
+
 
 exports.UAResult = mongoose.model('UAResult', {
     event: String,
@@ -75,7 +174,15 @@ exports.UAResult = mongoose.model('UAResult', {
 });
 
 
-exports.SMessage = mongoose.model('SMessage', { app: String, date: Date, type: Number, title: String, url: String, urllink: String, pos: { x: Number, y: Number } });
+exports.SMessage = mongoose.model('SMessage', {
+    app: { type: String, index: true },
+    date: { type: Date, index: true },
+    type: Number,
+    title: String,
+    url: String,
+    urllink: String,
+    pos: { x: Number, y: Number }
+});
 
 exports.GreetingPopup = mongoose.model('GreetingPopup', {
     type: Number,
@@ -90,9 +197,9 @@ exports.GreetingPopup = mongoose.model('GreetingPopup', {
     vipchange: [Number],
     st1_stake: [Number],
     st1_game: [Number],
-    date: Date,
-    dexp: Date,
-    app: String,
+    date: { type: Date, index: true },
+    dexp: { type: Date, index: true },
+    app: { type: String, index: true },
     url: String,
     urllink: String,
     countBtn: Number,
@@ -122,7 +229,7 @@ exports.GreetingPopup = mongoose.model('GreetingPopup', {
 // 2 -> nạp tiền rồi -> hiển thị banner này.
 // 3 -> ko quan tâm
 exports.Type10Popup = mongoose.model('Type10Popup', {
-    app: String,
+    app: { type: String, index: true },
     type: Number,
     showType: Number, // 0: login, 1: lúc hết tiền
     title: String,
@@ -140,8 +247,8 @@ exports.Type10Popup = mongoose.model('Type10Popup', {
     st1_stake: [Number],
     st1_game: [Number],
     showDaily: [],
-    date: Date,
-    dexp: Date,
+    date: { type: Date, index: true },
+    dexp: { type: Date, index: true },
     url: String,
     urllink: String,
     countBtn: Number,
@@ -154,10 +261,10 @@ exports.Type10Popup = mongoose.model('Type10Popup', {
 });
 
 exports.BannerV2 = mongoose.model('BannerV2', {
-    app: String,
+    app: { type: String, index: true },
     type: Number,
     url: String,
-    arrValue: [
+    arrButton: [
         // {
         // "type": "sms",
         // "btn": "http://siamplayth.com/mconfig/banner/button/btn_sms.png",
@@ -176,8 +283,8 @@ exports.BannerV2 = mongoose.model('BannerV2', {
     ],
     title: String,
     note: String,
-    date: Date,
-    dexp: Date,
+    date: { type: Date, index: true },
+    dexp: { type: Date, index: true },
     showLimit: Number,
     os: Number,
     requirePayment: Number,
@@ -195,7 +302,7 @@ exports.BannerV2 = mongoose.model('BannerV2', {
 });
 
 exports.GPReport = mongoose.model('GPReport', {
-    date: Date,
+    date: { type: Date, index: true },
     gpid: Number,
     title: String,
     result: {}
