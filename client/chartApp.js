@@ -3,7 +3,7 @@ var app = angular.module('chartApp', ['ngTouch', 'rgkevin.datetimeRangePicker', 
 app.config(function($stateProvider, $urlRouterProvider) {
     //
     // For any unmatched url, redirect to /state1
-    $urlRouterProvider.otherwise("/home/tracker");
+    $urlRouterProvider.otherwise("/home/trackerv2");
     //
     // Now set up the states
     $stateProvider
@@ -11,10 +11,15 @@ app.config(function($stateProvider, $urlRouterProvider) {
             url: "/home",
             templateUrl: "views/home.html",
         })
-        .state('home.tracker', {
-            url: "/tracker",
-            templateUrl: "views/home.tracker.html",
+        .state('home.trackerv1', {
+            url: "/trackerv1",
+            templateUrl: "views/home.trackerv1.html",
             controller: "CMonController"
+        })
+        .state('home.trackerv2', {
+            url: "/trackerv2",
+            templateUrl: "views/home.trackerv2.html",
+            controller: "TrackerController"
         })
         .state('home.notifier', {
             url: "/notifier",

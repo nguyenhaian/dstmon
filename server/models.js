@@ -130,7 +130,8 @@ var UserScheme = new mongoose.Schema({
     email: String,
     name: { type: String, index: true }, // không biết có nên thêm vip và gold vào ko
     vip: { type: Number, index: true },
-    gold: Number,
+    ag: Number,
+    dm: Number,
     lq: Number,
     lqc: [{ d: Date, lq: Number, plus: Number }], // mảng thay đổi LQ
     increaseLQ: Number, // -> tính lại increaseLQ theo từng lần thay đổi, ko tính theo lần đăng nhập nữa.
@@ -231,6 +232,7 @@ exports.GreetingPopup = mongoose.model('GreetingPopup', {
 exports.Type10Popup = mongoose.model('Type10Popup', {
     app: { type: String, index: true },
     type: Number,
+    allowClose: Boolean,
     showType: Number, // 0: login, 1: lúc hết tiền
     title: String,
     note: String,
@@ -264,6 +266,7 @@ exports.BannerV2 = mongoose.model('BannerV2', {
     app: { type: String, index: true },
     type: Number,
     url: String,
+    allowClose: Boolean,
     arrButton: [
         // {
         // "type": "sms",
@@ -292,11 +295,13 @@ exports.BannerV2 = mongoose.model('BannerV2', {
     priority: Number,
     showType: 0,
     vipchange: [Number],
-    st1_stake: [Number],
-    st1_game: [Number],
+    st1_stake: [Number], // mức cược đang chơi
+    st1_game: [Number], // loại game chơi
+    st1_staketype: [Number], // loại bàn cược
     showDaily: [Array],
     version: [Number],
     AG: [Number],
+    DM: [Number],
     Vip: [Number],
     LQ: [Number]
 });

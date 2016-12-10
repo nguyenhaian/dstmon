@@ -4,7 +4,7 @@ var _ = require('lodash');
 var clientsname = ["3C", "52fun", "dautruong", "UWin", "siam", "indo", "hilosea"];
 var paymentconfigurl = [
     "http://mobile.tracking.88club.org/paymentconfig.json",
-    "http://mobile.tracking.88club.org/paymentconfig.json",
+    "http://mobile.tracking.52fun.club/paymentconfig.json",
     "http://mobile.tracking.88club.org/paymentconfig.json",
     "http://mobile.tracking.88club.org/paymentconfig.json",
     "http://mobile.tracking.88club.org/paymentconfig.json",
@@ -93,14 +93,14 @@ exports.sdisid = [2873, 2923];
 exports.loadpaymentconfig = function(appconfig) {
     paymentconfigurl.map(function(url, index) {
         var appname = clientsname[index];
-        if (!_.has(appconfig, appname)) {
-            appconfig[appname] = {};
+        if (!_.has(appconfig, 'paymentconfig')) {
+            appconfig['paymentconfig'] = {};
         }
         request(url, function(error, response, data) {
             if (!error && response.statusCode == 200) {
                 try {
                     data = JSON.parse(data);
-                    appconfig[appname].paymentconfig = data;
+                    appconfig.paymentconfig[appname] = data;
                     // console.log(Object.keys(data));
                 } catch (e) {
                     console.log("loadpaymentconfig err exception ", e);

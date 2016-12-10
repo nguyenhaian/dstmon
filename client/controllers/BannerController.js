@@ -18,7 +18,7 @@
     function BannerController($scope, $http, $timeout, socket, $compile) {
         // init
         $scope.target = {
-            apps: ["dautruong", "3c", "52"]
+            apps: ["dautruong", "3c", "52fun"]
         };
         $scope.target.selectedApp = $scope.target.apps[0];
 
@@ -159,7 +159,7 @@
                                     <button ng-click='expand_editbox(result[${index}])'><i class="fa fa-expand" aria-hidden="true"></i></i></button>
                                     <button ng-click='colapse_editbox(result[${index}])'><i class="fa fa-compress" aria-hidden="true"></i></button>
                                     <label> <b>{{result[${index}]._id}}</b></label>
-                                    <a href="/getBanner/{{result[${index}]._id}}"> detail</a>
+                                    <a href="/getBanner/{{bannerVer}}/{{result[${index}]._id}}"> detail</a>
                                 </div>
                                 <div class='gbutton-r'>
                                     <button ng-click='sendTestBanner(result[${index}])'>test</button>
@@ -264,7 +264,8 @@
                     }
                     console.log(data);
                     // alert(JSON.stringify(data));
-                    $scope.result.splice(index, 1);
+                    // TODO: KO remove vì mình chỉ cần remove hiển thị là đc, remove object sẽ làm cho phần hiển thị bị lỗi.
+                    // $scope.result.splice(index, 1);
                     $('#canvas_' + item._id).closest('.row').remove();
                 });
             }
@@ -288,13 +289,14 @@
                 return;
             }
 
-            socket.sendTestBanner({ event: "news", name: $scope.queryTestUser, data: [data] }, function onSuccess(data) {
+            socket.sendTestBanner({ event: "news", name: $scope.queryTestUser, carrier: $scope.queryUserCarrier, data: [data] }, function onSuccess(data) {
                 if (data.err) {
                     alert(JSON.stringify(data.err));
                     return;
                 }
-                // console.log(data);
-                alert(JSON.stringify(data));
+                console.log(data.body);
+                const { found, socketid } = data;
+                alert(JSON.stringify({ found, socketid }));
             });
         }
 
@@ -417,15 +419,32 @@
                     oImg.moveTo(1);
                 });
 
+                var arrBtnUrl = [];
+                var arrBtnPos = [];
+                if ($scope.bannerVer == 1) {
+                    arrBtnUrl = item.arrUrlBtn;
+                    arrBtnPos = item.arrPos.map(function(pos) {
+                        return [pos.x, pos.y];
+                    });
+                }
+                if ($scope.bannerVer == 2) {
+                    arrBtnUrl = item.arrButton.map(function(btn) {
+                        return btn.btn;
+                    });
 
-                _.forEach(item.arrUrlBtn, function(btnItem, index) {
-                    fabric.Image.fromURL(btnItem, function(oImg) {
+                    arrBtnPos = item.arrButton.map(function(btn) {
+                        return btn.pos;
+                    });
+                }
+
+                _.forEach(arrBtnUrl, function(url, index) {
+                    fabric.Image.fromURL(url, function(oImg) {
                         // oImg.selectable = false;
                         var a = 40;
                         var _w = oImg.width * 300 / (570 + a), // 20 là gia vị thoi
                             _h = oImg.height * 300 / (570 + a), // 570 là kích thước thật của ảnh.
-                            _x = item.arrPos[index].x,
-                            _y = item.arrPos[index].y;
+                            _x = arrBtnPos[index][0],
+                            _y = arrBtnPos[index][1];
 
                         _x = (_x + 0.5) * canvas.width * 0.9 - _w / 2 + canvas.width * 0.05;
                         _y = (-_y + 0.5) * canvas.height * 0.9 - _h / 2;
@@ -466,11 +485,11 @@
         // end init
 
         // default action
-        $scope.initBannerVer = function(ver){
+        $scope.initBannerVer = function(ver) {
             $scope.bannerVer = ver;
-            $scope.getBanner($scope.queryCommand, $scope.querySelect, $scope.queryLimit);    
+            $scope.query($scope.queryCommand, $scope.querySelect, $scope.queryLimit);
         }
-        
+
     }
 
 })();

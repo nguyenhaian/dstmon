@@ -241,6 +241,9 @@
                 },
                 sendTestBanner: function(option, onSuccess) {
                     xpost(appconfig.socketurl + '/testevent', option, onSuccess);
+                },
+                getCCU: function(option, onSuccess) {
+                    xpost('/performancereport', option, onSuccess);
                 }
             };
         }]);

@@ -18,6 +18,7 @@
     "moment": "^2.13.0",
     "mongoose": "^4.4.16",
     "mssql": "^3.1.2",
+    "numeral": "^1.5.6",
     "range_check": "^1.4.0",
     "request": "^2.72.0",
     "require-reload": "^0.2.2",

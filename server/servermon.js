@@ -13,7 +13,6 @@ var sql = require('mssql');
 var request = require('request');
 var async = require("async");
 var json2csv = require('json2csv');
-var jsonfile = require('jsonfile');
 var models = require('./models.js')
 var appconfig = reload('./appconfig.js')
 
@@ -600,6 +599,12 @@ app.get('/square', function(req, res) {
     res.sendFile(path.resolve(__dirname + '/../crossfilter/index.html'));
 });
 
+app.get('/test', function(req, res) {
+    // res.sendFile(__dirname + '/../client/index.html');
+    res.sendFile(path.resolve(__dirname + '/../client/test.html'));
+});
+
+
 // ************  api Notification *************
 function notify(campaign, callback) {
     console.log('--> notify');
@@ -927,7 +932,7 @@ app.get('/popupreport/:app', function(req, res) {
 
     var getGPAsycn = {
         query: function(queryObject, callback) {
-            queryObject.find({ app: app })
+            queryObject.find({ app: { "$regex": app, "$options": "i" }  })
                 .select('_id title showType type priority Vip LQ AG url result')
                 .limit(200).lean().exec(function(err, docs) {
                     callback(err, docs);
@@ -954,10 +959,15 @@ app.get('/popupreport/:app', function(req, res) {
 });
 
 app.get('/performancereport', function(req, res) {
-    performancereport("1h", res);
+    performancereport({ time: "1h", view: "direct" }, res);
 });
 app.get('/performancereport/:option', function(req, res) {
     var option = req.params.option;
+    performancereport({ time: option, view: "direct" }, res);
+});
+
+app.post('/performancereport', function(req, res) {
+    var option = req.body;
     performancereport(option, res);
 });
 
@@ -969,31 +979,31 @@ function performancereport(req, res) {
     // 4. 1h
     // 5. 30m
     var start = moment().add(0, 'hours'); //.format("YYYY-MM-DD HH:mm:ss");
-    if (req == "month") {
+    if (req.time == "month") {
         start = moment().add(-30, 'days');
     } else
-    if (req == "week") {
+    if (req.time == "week") {
         start = moment().add(-7, 'days');
     } else
-    if (req == "2day") {
+    if (req.time == "2day") {
         start = moment().add(-2, 'days');
     } else
-    if (req == "day") {
+    if (req.time == "day") {
         start = moment().add(-1, 'days');
     } else
-    if (req == "12h") {
+    if (req.time == "12h") {
         start = moment().add(-12, 'hours');
     } else
-    if (req == "6h") {
+    if (req.time == "6h") {
         start = moment().add(-6, 'hours');
     } else
-    if (req == "1h") {
+    if (req.time == "1h") {
         start = moment().add(-1, 'hours');
     } else
-    if (req == "30m") {
+    if (req.time == "30m") {
         start = moment().add(-0.5, 'hours');
     } else {
-        req = "day";
+        req.time = "day";
         start = moment().add(-1, 'days');
     }
     // end = moment(option.date).startOf('day').add(29, 'hours'); //.format("YYYY-MM-DD HH:mm:ss");
@@ -1023,14 +1033,23 @@ function performancereport(req, res) {
             });
         }
     }, function(err, results) {
-        if (err)
+        if (err) {
             res.json({ err: err });
-        else
-            res.render('view_d3graph', {
-                tsvdata: results.tsv,
-                rccu: results.rccu,
-                req: req
-            });
+        } else {
+            if (req.view == "direct") {
+                res.render('view_d3graph', {
+                    tsvdata: results.tsv,
+                    rccu: results.rccu,
+                    req: req
+                });
+            } else {
+                res.json({
+                    tsvdata: results.tsv,
+                    rccu: results.rccu,
+                    req: req
+                });
+            }
+        }
     });
 };
 
@@ -1349,16 +1368,17 @@ app.post('/getBanner', function(req, res) {
 });
 
 
-app.get('/getBanner/:_id', function(req, res) {
+app.get('/getBanner/:bannerver/:_id', function(req, res) {
     // console.log(JSON.stringify(req.body));
     var _id = req.params._id;
+    var bannerver = req.params.bannerver;
     var Model = models.Type10Popup;
-    if (option.bannerVer == 1) {
+    if (bannerver == 1) {
         Model = models.Type10Popup;
-    } else if (option.bannerVer == 2) {
+    } else if (bannerver == 2) {
         Model = models.BannerV2;
     } else {
-        res.json({ err: "wrong bannerVer " + option.bannerVer });
+        res.json({ err: "wrong bannerVer " + bannerver });
         return;
     }
     var query = Model.find({ _id: _id });
@@ -1465,22 +1485,21 @@ app.post('/createBanner', function(req, res) {
         Model = models.BannerV2;
         var data = {
             "app": option.app,
+            "title": "",
+            "note": "st1_staketype là thông tin bổ trợ cho showType1. -1-> ko phân biệt loại mức cược, 0 -> chơi bằng Chip, 1 -> chơi bằng Gold",
             "type": 20,
+            "allowClose": true,
             "url": "http://siamplayth.com/mconfig/banner/lq_km200/300_1.png",
             arrButton: [{
                 "type": "sms",
                 "btn": "http://siamplayth.com/mconfig/banner/button/btn_sms.png",
                 "pos": [-0.3, -0.3],
-                "ctype": 1,
+                "ctype": 0,
                 "ccost": 10000,
-                "btype": 0,
+                "btype": 1,
                 "bvalue": 200,
-                "value": "40K Gold",
-                "bonus": "+80K Chip",
-                "cost": "10K VND",
-                "syntax": "mw 10000 teen NAP 52fun-ann2009-1",
-                "add": "+9029",
-                "comment": "nạp Gold, 10K VND, được 40k Gold, bonus Chip "
+                "bstyle": 1,
+                "comment": "ctype:0 -> Nạp Chip, btype:1 -> bonus Gold, ccost:10000 -> 10K VND, bstyle:1 -> giá cũ/giá mới"
             }, {
                 "type": "card",
                 "btn": "http://siamplayth.com/mconfig/banner/button/btn_card.png",
@@ -1491,10 +1510,8 @@ app.post('/createBanner', function(req, res) {
                 "ccost": 10000,
                 "btype": 0,
                 "bvalue": 200,
-                "value": "40K Gold",
-                "bonus": "+120K Chip",
-                "cost": "10K VND",
-                "comment": "nạp Gold, 10K VND, được 40k Gold, bonus Chip "
+                "bstyle": 0,
+                "comment": "ctype:1 -> Nạp Gold, btype:0 -> bonus Chip, ccost:10000 -> 10K VND, bstyle:0 -> giá cũ/bonus"
             }, {
                 "type": "iap",
                 "btn": "http://siamplayth.com/mconfig/banner/button/btn_iap.png",
@@ -1502,13 +1519,11 @@ app.post('/createBanner', function(req, res) {
                     0.3, -0.3
                 ],
                 "ctype": 1,
-                "ccost": 10000,
+                "ccost": 1,
                 "btype": 0,
                 "bvalue": 200,
-                "value": "40K Gold",
-                "bonus": "+160K Chip",
-                "cost": "10K VND",
-                "comment": "nạp Gold, 10K VND, được 40k Gold, bonus Chip "
+                "bstyle": 1,
+                "comment": "ctype:1 -> Nạp Gold, btype:0 -> bonus Chip, ccost:1 -> 1USD"
             }, {
                 "type": "ok",
                 "btn": "http://siamplayth.com/mconfig/banner/button/btn_iap.png",
@@ -1541,8 +1556,6 @@ app.post('/createBanner', function(req, res) {
                     0.3, -0.3
                 ]
             }],
-            "title": "",
-            "note": "String",
             "showLimit": 100,
             "os": 0,
             "requirePayment": 3,
@@ -1550,17 +1563,20 @@ app.post('/createBanner', function(req, res) {
             "date": "2016-11-24T06:55:43.000Z",
             "dexp": "2016-11-24T06:55:43.000Z",
             "showType": 0,
+            st1_stake: [0, 10000000], // mức cược đang chơi
+            st1_game: [], // loại game chơi
+            st1_staketype: [0, 1], // loại bàn cược
             "comment1": "ctype:0 nạp Chip, 1, nạp Gold",
             "comment2": "btype:0 bonus Chip, 1, bonus Gold",
-            "stake": [
-                0,
-                10000000
-            ],
             "version": [
                 0,
                 10
             ],
             "AG": [
+                0,
+                100000000
+            ],
+            "DM": [
                 0,
                 100000000
             ],

@@ -10,7 +10,6 @@ var moment = require('moment')
 var mongoose = require('mongoose')
 var path = require('path');
 var request = require('request');
-var jsonfile = require('jsonfile');
 var FB = require('fb');
 var async = require("async");
 var models = require('./models.js')
@@ -132,13 +131,16 @@ var getGPAsycn = {
     }
 };
 
-async.map([models.SMessage, models.GreetingPopup, models.Type10Popup], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
+async.map([models.SMessage, models.GreetingPopup, models.Type10Popup, models.BannerV2], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
     if (err) {
         res.send(JSON.stringify(err, null, 3));
         return;
     }
 
-    var data = result[0].concat(result[1]).concat(result[2]);
+    var data = [];
+    result.map(function(value, index) {
+        data = data.concat(result[index]);
+    });
     // vì type10 được sử dụng thường xuyên nên mình format luôn
     sMesData0 = data.filter(function(item) {
         if (!_.has(item, 'showType'))
@@ -546,7 +548,13 @@ function captureUserAction(socket, user, user_update) {
                     // thời điểm bắn sMes
                     // kiểm tra những sMes mà user đã nhận so với sMes của server
                     // order lại thứ tự nhận rồi emit về cho user
-                    var sMes = sMesData0[user.app];
+                    var sMesData = sMesData0;
+                    var sMes = [];
+                    Object.keys(sMesData).map(function(appnames) {
+                        if (appnames.includes(user.app)) {
+                            sMes = sMes.concat(sMesData[appnames]);
+                        }
+                    });
                     utils.sendPopups(socket, models.MUser, user, sMes, appconfig);
 
                     // kiểm tra firstlogin để trả về news
@@ -658,8 +666,15 @@ function captureUserAction(socket, user, user_update) {
                     before: user.vip,
                     date: Date()
                 }
-
-                var sMes = sMesData2[user.app];
+                // thực hiện gán giá trị luôn ở đây để đáp ứng lọc sendpopup
+                user.vip = user_update.vip;
+                var sMesData = sMesData2;
+                var sMes = [];
+                Object.keys(sMesData).map(function(appnames) {
+                    if (appnames.includes(user.app)) {
+                        sMes = sMes.concat(sMesData[appnames]);
+                    }
+                });
                 // user.lastGame = { gameid: user.gameid, stake: stake };
                 sMes = utils.filterShowType2(sMes, user);
                 utils.sendPopups(socket, models.MUser, user, sMes, appconfig);
@@ -778,10 +793,12 @@ app.get('/uaResult', function(req, res) {
 
 app.post('/testevent', function(req, res) {
     var username = req.body.name;
+    var usercarrier = req.body.carrier;
+    // var userapp = req.body.app | 'unkown';
 
     var found = false;
     var sid = '_';
-    var bannerdata = [];
+    var edata = [];
     var body = req.body;
     var banners = body.data;
 
@@ -790,7 +807,7 @@ app.post('/testevent', function(req, res) {
             banners = banners.map(function(bannerItem) {
                 return utils.formatBannerButton({
                     app: appconfig.clientsname[1],
-                    provider: 'VIETTEL',
+                    provider: usercarrier,
                     username: username
                 }, appconfig, bannerItem);
             });
@@ -798,7 +815,7 @@ app.post('/testevent', function(req, res) {
             body.data = banners;
         }
 
-        bannerdata = banners;
+        edata = banners;
     }
 
     _.forEach(connectedDevices, function(device, socketid) {
@@ -816,19 +833,22 @@ app.post('/testevent', function(req, res) {
 
 
     res.setHeader('Content-Type', 'application/json');
-    res.send(JSON.stringify({ found: found, socketid: sid, body: bannerdata }, null, 3));
+    res.send(JSON.stringify({ found: found, socketid: sid, body: edata }, null, 3));
 });
 
 app.get('/sMes', function(req, res) {
     utils = reload('./utils.js');
 
-    async.map([models.SMessage, models.GreetingPopup, models.Type10Popup], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
+    async.map([models.SMessage, models.GreetingPopup, models.Type10Popup, models.BannerV2], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
         if (err) {
             res.send(JSON.stringify(err, null, 3));
             return;
         }
 
-        var data = result[0].concat(result[1]).concat(result[2]);
+        var data = [];
+        result.map(function(value, index) {
+            data = data.concat(result[index]);
+        });
         // vì type10 được sử dụng thường xuyên nên mình format luôn
         sMesData0 = data.filter(function(item) {
             if (!_.has(item, 'showType'))
@@ -939,7 +959,7 @@ function analyze_login_api() {
     // avgNetworkPerformanceData.login_failed
 
     // tạm fix cái này
-    var apps = ["3c", "52", "dautruong", "siam", "indo"];
+    var apps = appconfig.clientsname;
     for (var i = 0; i < apps.length; i++) {
         var appid = apps[i];
 
@@ -1128,7 +1148,8 @@ function addOrUpdateUserToDB(iuser, callback) {
                     ip: [{ id: iuser.ip, la: new Date() }]
                 }
                 // không thể check là if(iuser.ag) vì giá trị ag có thể là 0
-            data.gold = iuser.ag || iuser.gold;
+            data.ag = iuser.ag || iuser.gold || -1;
+            data.dm = iuser.dm;
             if (iuser.hasOwnProperty('vip')) data.vip = iuser.vip;
             if (iuser.hasOwnProperty('lq')) data.lq = iuser.lq;
 
@@ -1237,7 +1258,8 @@ function addOrUpdateUserToDB(iuser, callback) {
                 loginCount: loginCount + 1,
                 popupHasShowed: popupHasShowed
             }
-            data.gold = iuser.ag || iuser.gold || -1;
+            data.ag = iuser.ag || iuser.gold || -1;
+            data.dm = iuser.dm || -1;
             if (iuser.hasOwnProperty('vip')) data.vip = iuser.vip;
             if (iuser.hasOwnProperty('lq')) data.lq = iuser.lq;
 
@@ -1265,6 +1287,7 @@ function getFBExtraData(FB, iuser, callback) {
     if (!iuser.lastUpdateFB || moment(iuser.lastUpdateFB).isBefore(yesterday)) {
         // console.log('step 1 ' + iuser.username + ' ac: ' + iuser.ac);
         var fb = FB.withAccessToken(iuser.ac);
+        console.log(iuser.ac);
         // FB.setAccessToken(iuser.ac);
 
         fb.api('', 'post', {
@@ -1376,6 +1399,8 @@ function handleConnection(socket, app) {
 
     socket.on('reginfo', function(user) {
         user = JSON.parse(user);
+        // format user
+        user = utils.formatUser(appconfig, app, user);
         user.disid = user.disid + '_' + app;
         // console.log(getTimeStamp() + ' +++++ ' + JSON.stringify(user));
         // process.stdout.write('+')
@@ -1395,6 +1420,8 @@ function handleConnection(socket, app) {
 
     socket.on('changeScene', function(user) {
         user = JSON.parse(user); // lưu ý trong changeScene ko chứa disid
+        // format user
+        user = utils.formatUser(appconfig, app, user);
         // gui den manager_users
         if (realtimemode) tracker.emit('mobile_changeScene', user);
 
@@ -1579,11 +1606,19 @@ function handleConnection(socket, app) {
                 // console.log(`${user.username} finish game ${user.gameid}`);
                 break;
             case 'leaveTable':
-                var gold = data.ag;
+                var ag = data.ag;
+                var dm = data.dm;
+                var staketype = _.has(data, 'staketype') ? data.staketype : (_.has(data, 'type') ? data.type: undefined);
                 var stake = data.stake;
-                var sMes = sMesData1[user.app];
-                user.lastGame = { gameid: user.gameid, stake: stake };
-                sMes = utils.filterShowType1(sMes, user.gameid, gold, user.vip, stake);
+                var sMesData = sMesData1;
+                var sMes = [];
+                Object.keys(sMesData).map(function(appnames) {
+                    if (appnames.includes(user.app)) {
+                        sMes = sMes.concat(sMesData[appnames]);
+                    }
+                });
+                user.lastGame = { gameid: user.gameid, stake: stake, staketype: staketype, dm: dm, ag: ag };
+                sMes = utils.filterShowType1(sMes, user, ag, dm, stake, staketype);
                 utils.sendPopups(socket, models.MUser, user, sMes, appconfig);
             case 'videoCount':
                 user.videoWatched = data.videoCurrent;
@@ -1767,15 +1802,21 @@ setInterval(function() {
 
     try {
         // load lại config
+        // note: vì load lại như này, và chưa kịp load lại paymentconfig nên có thời điểm ko tồn tại payment config.
+        var paymentconfig = appconfig.paymentconfig;
         appconfig = reload('./appconfig.js');
+        // gán lại paymentconfig cũ trước khi lấy đc paymentconfig mới
+        appconfig.paymentconfig = paymentconfig;
+
+        // loạd lại paymentconfig
+        appconfig.loadpaymentconfig(appconfig);
     } catch (e) {}
 
     /** TODO: xác định những bất thường */
     analyze_ccu(ccus_byapp, appconfig, 'appid', lastRecordsCCUS);
     analyze_ccu(ccus_byip, appconfig, 'ip', lastRecordsCCUS);
 
-    // loạd lại paymentconfig
-    appconfig.loadpaymentconfig(appconfig);
+
 }, 30000); // 30s một lần
 
 setInterval(function() {
@@ -1917,6 +1958,11 @@ function saveSMesResult() {
                     console.log("models.Type10Popup.update err: " + JSON.stringify(err));
             });
 
+            models.BannerV2.update({ _id: item.id }, { $inc: item.data }, function(err, res) {
+                if (err)
+                    console.log("models.BannerV2.update err: " + JSON.stringify(err));
+            });
+
         };
         // ko cần quan tâm result
         // clear lại bộ đếm tương tác
@@ -1958,13 +2004,16 @@ function saveSMesResult() {
     }
 
     // sau khi có dữ liệu đủ, mình cập nhật lại gp mới, vì đã có thể thêm hoặc xóa gp rồi.
-    async.map([models.SMessage, models.GreetingPopup, models.Type10Popup], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
+    async.map([models.SMessage, models.GreetingPopup, models.Type10Popup, models.BannerV2], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
         if (err) {
             res.send(JSON.stringify(err, null, 3));
             return;
         }
 
-        var data = result[0].concat(result[1]).concat(result[2]);
+        var data = [];
+        result.map(function(value, index) {
+            data = data.concat(result[index]);
+        });
         // vì type10 được sử dụng thường xuyên nên mình format luôn
         sMesData0 = data.filter(function(item) {
             if (!_.has(item, 'showType'))
