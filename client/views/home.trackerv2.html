@@ -1,0 +1,33 @@
+<style>
+body {
+    margin: 0px;
+}
+
+.axis--x path {
+    display: none;
+}
+
+.line {
+    fill: none;
+    stroke: steelblue;
+    stroke-width: 1.5px;
+}
+</style>
+<div>
+    <a href="/performancereport/month">month</a>
+    <a href="/performancereport/week">week</a>
+    <a href="/performancereport/2day">2day</a>
+    <a href="/performancereport/day">day</a>
+    <a href="/performancereport/12h">12h</a>
+    <a href="/performancereport/6h">6h</a>
+    <a href="/performancereport/1h">1h</a>
+    <a href="/performancereport/30m">30m</a>
+</div>
+<div><b>{{req}}</b>
+    
+</div>
+<svg id="svg-app" width="420" height="500"></svg>
+<svg id="svg-ip" width="420" height="500"></svg>
+<svg id="svg-login" width="420" height="500"></svg>
+<svg id="svg-all" width="420" height="500"></svg>
+<pre id="ccu">{{rccu}}</pre>
