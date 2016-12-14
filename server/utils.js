@@ -41,7 +41,7 @@ function shuffle(array) {
     return array;
 }
 
-function sendPopups(socket, MUser, user, sMes, appconfig) {
+function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
     // return true nếu bắn thành công, return false ngược lại
     if (!sMes || sMes.length < 1)
         return false;
@@ -70,150 +70,174 @@ function sendPopups(socket, MUser, user, sMes, appconfig) {
     if (_.has(user, 'ag')) userag = user.ag;
     if (_.has(user, 'gold')) userag = user.gold;
 
-    if (_.has(user, 'lq') && _.has(user, 'vip')) {
-        // lọc sMesData
-        sMesData = sMesData.filter(function(d) {
-            if (!d.hasOwnProperty('requirePayment'))
-                d.requirePayment = 3;
-            // 0 -> chưa nạp tiền -> hiển thị banner này. 
-            // 1 -> nạp tiền rồi -> ko hiển thị banner này.
-            // 2 -> nạp tiền rồi -> hiển thị banner này.
-            // 3 -> ko quan tâm
+    if (!_.has(user, 'lq') || !_.has(user, 'vip'))
+        return;
 
-            var pass_lqcheck = (user.increaseLQ == 0 && d.requirePayment == 0) || !(user.increaseLQ > 0 && d.requirePayment == 1) || (user.increaseLQ > 0 && d.requirePayment == 2) || (d.requirePayment == 3)
+    // lọc sMesData
+    sMesData = sMesData.filter(function(d) {
+        if (!d.hasOwnProperty('requirePayment'))
+            d.requirePayment = 3;
+        // 0 -> chưa nạp tiền -> hiển thị banner này. 
+        // 1 -> nạp tiền rồi -> ko hiển thị banner này.
+        // 2 -> nạp tiền rồi -> hiển thị banner này.
+        // 3 -> ko quan tâm
 
-            if (!d.hasOwnProperty('os'))
-                d.os = 0;
-            // 0 -> không quan tâm
-            // 1 -> iOS
-            // 2 -> Android
-            var pass_oscheck = (user.device_OS == 'iOS' && d.os == 1) || (user.device_OS == 'Android' && d.os == 2) || (d.os == 0);
+        var pass_lqcheck = (user.increaseLQ == 0 && d.requirePayment == 0) || !(user.increaseLQ > 0 && d.requirePayment == 1) || (user.increaseLQ > 0 && d.requirePayment == 2) || (d.requirePayment == 3)
 
-            var version = parseFloat(user.app_version)
-            if (!d.hasOwnProperty('version'))
-                d.version = [0, 1000];
-            var pass_versioncheck = (version >= d.version[0] && version <= d.version[1]);
-            if (!_.has(d, 'LQ')) {
-                d.LQ = [0, 100000000];
-            }
-            if (!_.has(d, 'DM')) {
-                d.DM = [0, 100000000];
-            }
-            if (!_.has(d, 'Vip')) {
-                d.Vip = [0, 100000000];
-            }
-            if (!_.has(d, 'AG')) {
-                d.AG = [0, 100000000];
-            }
-            if (!_.has(d, 'videoWatched') || d.videoWatched.length == 0) {
-                d.videoWatched = [0, 100000000];
-            }
+        if (!d.hasOwnProperty('os'))
+            d.os = 0;
+        // 0 -> không quan tâm
+        // 1 -> iOS
+        // 2 -> Android
+        var pass_oscheck = (user.device_OS == 'iOS' && d.os == 1) || (user.device_OS == 'Android' && d.os == 2) || (d.os == 0);
 
-            var videoWatched = user.videoWatched || 0;
-
-            var pass_lq = user.lq >= d.LQ[0] && user.lq <= d.LQ[1];
-            var pass_ag = userag >= d.AG[0] && userag <= d.AG[1];
-            var pass_dm = user.dm >= d.DM[0] && user.dm <= d.DM[1];
-            var pass_vip = user.vip >= d.Vip[0] && user.vip <= d.Vip[1];
-            var pass_videoWatched = videoWatched >= d.videoWatched[0] && videoWatched <= d.videoWatched[1];
-            var pass_filter = pass_lq && pass_ag && pass_dm && pass_vip && pass_videoWatched;
-            pass_filter &= pass_lqcheck;
-            pass_filter &= pass_oscheck;
-            pass_filter &= pass_versioncheck;
-
-            user.pass_lq = pass_lq;
-            user.pass_ag = pass_ag;
-            user.pass_dm = pass_dm;
-            user.pass_vip = pass_vip;
-            user.pass_videoWatched = pass_videoWatched;
-            user.pass_lqcheck = pass_lqcheck;
-            user.pass_oscheck = pass_oscheck;
-            user.pass_versioncheck = pass_versioncheck;
-
-            user.pass_filterx = pass_filter;
-            return pass_filter;
-        });
-        // NOTE 28/10: một số popup hoạt động theo kiểu
-        // 1. đăng nhập lần đầu ở ngày mới sẽ hiện, user.increaseLQ = 0
-        // 2. các lần đăng nhập mới, nhưng ngày hôm đó chưa nạp tiền -> hiện tiếp, user.increaseLQ = 0
-
-        // -> giải pháp: 
-        // Lưu LQ lần đăng nhập đầu lại, sau đó check thay đổi với lần đầu.
-
-        if (sMesData.length > 0) {
-            // mục đích của 3 bước sau là random lựa chọn một trong những popup có priority giống nhau
-            // 1. trộn ngẫu nhiên
-            sMesData = shuffle(sMesData);
-
-            // 2. sort theo priority
-            sMesData.sort(function(a, b) {
-                if (!_.has(a, 'priority'))
-                    a.priority = 1000;
-                if (!_.has(b, 'priority'))
-                    b.priority = 1000;
-                return a.priority - b.priority;
-            });
-
-            // 3. lấy unique theo priority
-            sMesData = uniqBy(sMesData, function(item) {
-                return item.priority;
-            });
-
-
-            if (!user.hasOwnProperty('popupHasShowed'))
-                user.popupHasShowed = {};
-
-            var sMesData = sMesData.map(function(item) {
-                var urls = item.url.split(";");
-                urls = urls.filter(function(d) {
-                    return (/\S/.test(d));
-                });
-                // if (urls.length > 1) {
-                var n = getRandomInt(0, urls.length - 1);
-                if (!_.has(user, item._id)) {
-                    user[item._id] = {};
-                }
-                // user[item._id].urls = item.url;
-                item.url = urls[n];
-                user[item._id].sMesIndex = n; // cái này quan trọng để cập nhật vào gpReport
-                user[item._id].url = item.url;
-
-                // console.log('#########RANDOM########## ' + user.username + ' ' + n + '/' + urls.length);
-                // }
-                if (!user.popupHasShowed.hasOwnProperty(item.showType)) {
-                    user.popupHasShowed[item.showType] = 0;
-                }
-                user.popupHasShowed[item.showType]++;
-
-                if (_.has(item, 'result'))
-                    delete item.result;
-
-                item = formatBannerButton(user, appconfig, item);
-                user.pendingBanners.push(item);
-                return item;
-            });
-
-            // if (user.username == 'giangvp11') {
-            // console.log('#########RANDOM########## ' + user.username);
-
-
-            socket.emit('event', { event: 'news', data: sMesData });
-            user.hasGetPopup = { date: new Date(), title: sMesData[0].title, type: sMesData[0].type, size: sMesData.length };
-
-            MUser.findOneAndUpdate({ _id: user._id }, {
-                $set: {
-                    popupHasShowed: user.popupHasShowed
-                }
-            }, { new: true }, function(err, doc) {
-                if (err) {
-                    console.log("Something wrong when updating user.popupHasShowed ");
-                    console.log(err);
-                }
-            });
-
-            return true;
+        var version = parseFloat(user.app_version)
+        if (!d.hasOwnProperty('version'))
+            d.version = [0, 1000];
+        var pass_versioncheck = (version >= d.version[0] && version <= d.version[1]);
+        if (!_.has(d, 'LQ')) {
+            d.LQ = [0, 100000000];
         }
+        if (!_.has(d, 'DM')) {
+            d.DM = [0, 100000000];
+        }
+        if (!_.has(d, 'Vip')) {
+            d.Vip = [0, 100000000];
+        }
+        if (!_.has(d, 'AG')) {
+            d.AG = [0, 100000000];
+        }
+        if (!_.has(d, 'videoWatched') || d.videoWatched.length == 0) {
+            d.videoWatched = [0, 100000000];
+        }
+
+        var videoWatched = user.videoWatched || 0;
+
+        var pass_lq = user.lq >= d.LQ[0] && user.lq <= d.LQ[1];
+        var pass_ag = userag >= d.AG[0] && userag <= d.AG[1];
+        var pass_dm = user.dm >= d.DM[0] && user.dm <= d.DM[1];
+        var pass_vip = user.vip >= d.Vip[0] && user.vip <= d.Vip[1];
+        var pass_videoWatched = videoWatched >= d.videoWatched[0] && videoWatched <= d.videoWatched[1];
+        var pass_filter = pass_lq && pass_ag && pass_dm && pass_vip && pass_videoWatched;
+        pass_filter &= pass_lqcheck;
+        pass_filter &= pass_oscheck;
+        pass_filter &= pass_versioncheck;
+
+        user.pass_lq = pass_lq;
+        user.pass_ag = pass_ag;
+        user.pass_dm = pass_dm;
+        user.pass_vip = pass_vip;
+        user.pass_videoWatched = pass_videoWatched;
+        user.pass_lqcheck = pass_lqcheck;
+        user.pass_oscheck = pass_oscheck;
+        user.pass_versioncheck = pass_versioncheck;
+
+        user.pass_filterx = pass_filter;
+        return pass_filter;
+    });
+    // NOTE 28/10: một số popup hoạt động theo kiểu
+    // 1. đăng nhập lần đầu ở ngày mới sẽ hiện, user.increaseLQ = 0
+    // 2. các lần đăng nhập mới, nhưng ngày hôm đó chưa nạp tiền -> hiện tiếp, user.increaseLQ = 0
+
+    // -> giải pháp: 
+    // Lưu LQ lần đăng nhập đầu lại, sau đó check thay đổi với lần đầu.
+
+    if (sMesData.length > 0) {
+        // mục đích của 3 bước sau là random lựa chọn một trong những popup có priority giống nhau
+        // 1. trộn ngẫu nhiên
+        sMesData = shuffle(sMesData);
+
+        // 2. sort theo priority
+        sMesData.sort(function(a, b) {
+            if (!_.has(a, 'priority'))
+                a.priority = 1000;
+            if (!_.has(b, 'priority'))
+                b.priority = 1000;
+            return a.priority - b.priority;
+        });
+
+        // 3. lấy unique theo priority
+        sMesData = uniqBy(sMesData, function(item) {
+            return item.priority;
+        });
+
+
+        if (!user.hasOwnProperty('popupHasShowed'))
+            user.popupHasShowed = {};
+
+        var sMesData = sMesData.map(function(item) {
+            var urls = item.url.split(";");
+            urls = urls.filter(function(d) {
+                return (/\S/.test(d));
+            });
+            // if (urls.length > 1) {
+            var n = getRandomInt(0, urls.length - 1);
+            if (!_.has(user, item._id)) {
+                user[item._id] = {};
+            }
+            // user[item._id].urls = item.url;
+            item.url = urls[n];
+            user[item._id].sMesIndex = n; // cái này quan trọng để cập nhật vào gpReport
+            user[item._id].url = item.url;
+
+            // console.log('#########RANDOM########## ' + user.username + ' ' + n + '/' + urls.length);
+            // }
+            if (!user.popupHasShowed.hasOwnProperty(item.showType)) {
+                user.popupHasShowed[item.showType] = 0;
+            }
+            user.popupHasShowed[item.showType]++;
+
+            if (_.has(item, 'result'))
+                delete item.result;
+
+            item = formatBannerButton(user, appconfig, item);
+            user.pendingBanners.push(item);
+            
+            // thêm data vào gpResult
+            var ev = 'sent';
+            var id = item._id; // banner id;
+            var date = moment().format("YYYY-MM-DD");
+            var os = user.device_OS;
+            var sindex = 0;
+            if (_.has(user, id)) // != 0 hoặc đã đc set, trong trường hợp thông thg mình check has atribute chưa
+                if (_.has(user[id], 'sMesIndex'))
+                    sindex = user[id].sMesIndex;
+            ev = 'result.' + date + '.' + os + '.' + sindex + '.' + ev;
+
+            if (!_.has(gpResult, id)) {
+                gpResult[id] = {};
+            }
+
+            if (!_.has(gpResult[id], ev)) {
+                gpResult[id][ev] = 0;
+            }
+
+            gpResult[id][ev]++;
+
+            return item;
+        });
+
+        // if (user.username == 'giangvp11') {
+        // console.log('#########RANDOM########## ' + user.username);
+
+
+        socket.emit('event', { event: 'news', data: sMesData });
+        user.hasGetPopup = { date: new Date(), title: sMesData[0].title, type: sMesData[0].type, size: sMesData.length };
+
+        MUser.findOneAndUpdate({ _id: user._id }, {
+            $set: {
+                popupHasShowed: user.popupHasShowed
+            }
+        }, { new: true }, function(err, doc) {
+            if (err) {
+                console.log("Something wrong when updating user.popupHasShowed ");
+                console.log(err);
+            }
+        });
+
+        return true;
     }
+
 
     return false;
 }

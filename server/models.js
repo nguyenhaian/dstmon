@@ -160,10 +160,15 @@ var UserScheme = new mongoose.Schema({
     // lastGame:{gid:String, stake:Number},
     cp: [{ pid: String, gid: Number, n: String, c: Number, d: Date }], // danh sách player hay choi cùng, Ghi vào Db lúc user thoát
     // gid: gameid, n:name, c: count, d: last date phát sinh ván chơi cùng
-    fl: [{ pid: String, gid: Number, n: String, d: Date }] // follow list
+    fl: [{ pid: String, gid: Number, n: String, d: Date }], // follow list
         // đối với biến user,
         // player đc chọn sẽ đưa vào follow list.
         // d: ngày kết bạn
+    bannerShowedHistory: {
+        session: [{id: String, count: Number}],
+        day: [{id: String, count: Number}],
+        lifetime: [{id: String, count: Number}]
+    }
 });
 UserScheme.index({ uid: 1, app: 1 }, { unique: true });
 exports.MUser = mongoose.model('User', UserScheme);

@@ -555,7 +555,7 @@ function captureUserAction(socket, user, user_update) {
                             sMes = sMes.concat(sMesData[appnames]);
                         }
                     });
-                    utils.sendPopups(socket, models.MUser, user, sMes, appconfig);
+                    utils.sendPopups(socket, models.MUser, user, sMes, appconfig, gpResult);
 
                     // kiểm tra firstlogin để trả về news
                     // var YESTERDAY = moment().clone().subtract(1, 'days').startOf('day');
@@ -677,7 +677,7 @@ function captureUserAction(socket, user, user_update) {
                 });
                 // user.lastGame = { gameid: user.gameid, stake: stake };
                 sMes = utils.filterShowType2(sMes, user);
-                utils.sendPopups(socket, models.MUser, user, sMes, appconfig);
+                utils.sendPopups(socket, models.MUser, user, sMes, appconfig, gpResult);
             }
         }
         // 3. Tình Huống thoát game cũng đo được, nhưng đo chỗ khác.
@@ -757,6 +757,29 @@ app.get('/users/:username', function(req, res) {
 
     if (_.isEmpty(result)) {
         models.MUser.find({ name: username }).exec(function(err, ruser) {
+            res.setHeader('Content-Type', 'application/json');
+            res.send(JSON.stringify({ status: 'OFFLINE', user: ruser }, null, 3));
+        });
+    } else {
+        res.setHeader('Content-Type', 'application/json');
+        res.send(JSON.stringify(result, null, 3));
+    }
+
+});
+
+app.get('/userbyip/:ip', function(req, res) {
+    //::ffff:1.46.227.9
+    var userip = '::ffff:' + req.params.ip;
+    var result = [];
+    _.forEach(connectedDevices, function(device) {
+        if (_.has(device, 'ip') && device.ip == userip) {
+            result.push(device);
+            // return false;
+        }
+    });
+
+    if (_.isEmpty(result)) {
+        models.MUser.find({ lIP: userip }).exec(function(err, ruser) {
             res.setHeader('Content-Type', 'application/json');
             res.send(JSON.stringify({ status: 'OFFLINE', user: ruser }, null, 3));
         });
@@ -1153,6 +1176,8 @@ function addOrUpdateUserToDB(iuser, callback) {
             if (iuser.hasOwnProperty('vip')) data.vip = iuser.vip;
             if (iuser.hasOwnProperty('lq')) data.lq = iuser.lq;
 
+            callback(iuser);
+
             var mUser = new models.MUser(data);
             mUser.save(function(err, doc) {
                 if (err) {
@@ -1247,7 +1272,7 @@ function addOrUpdateUserToDB(iuser, callback) {
 
             var data = {
                 d2: new Date(),
-                name: iuser.username, // vì cái này có thể thay
+                name: iuser.username, // vì cái này có thể thay đổi
                 lDisid: iuser.disid,
                 lDev: idid,
                 lIP: iuser.ip,
@@ -1619,7 +1644,7 @@ function handleConnection(socket, app) {
                 });
                 user.lastGame = { gameid: user.gameid, stake: stake, staketype: staketype, dm: dm, ag: ag };
                 sMes = utils.filterShowType1(sMes, user, ag, dm, stake, staketype);
-                utils.sendPopups(socket, models.MUser, user, sMes, appconfig);
+                utils.sendPopups(socket, models.MUser, user, sMes, appconfig, gpResult);
             case 'videoCount':
                 user.videoWatched = data.videoCurrent;
                 break;
