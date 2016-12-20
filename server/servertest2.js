@@ -1,16 +1,20 @@
-var request = require('request');
-var _ = require('lodash');
+var mongoose = require('mongoose')
+var models = require('./models.js')
 
-request('http://mobile.tracking.88club.org/paymentconfig.json', function(error, response, data) {
-    if (!error && response.statusCode == 200) {
-        try {
-            data = JSON.parse(data);
-            console.log(Object.keys(data));
-        } catch (e) {
-            console.log("err ", err);
-        }
+mongoose.connect('mongodb://localhost/CustomerMonitor');
 
-    } else {
-        console.log("err ", err);
-    }
-})
+var rule = new models.BannerShowLimitRule({
+    date: Date(),
+    ruleNumber: 1,
+    description: 'test rule',
+    limit: 1
+});
+
+console.log("start");
+rule.save(function(err, logDoc) {
+	console.log("on return");
+    if (err) {
+        return console.error(err) 
+    };
+    console.log('+rule');
+});

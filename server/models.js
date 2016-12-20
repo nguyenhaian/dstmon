@@ -161,13 +161,14 @@ var UserScheme = new mongoose.Schema({
     cp: [{ pid: String, gid: Number, n: String, c: Number, d: Date }], // danh sách player hay choi cùng, Ghi vào Db lúc user thoát
     // gid: gameid, n:name, c: count, d: last date phát sinh ván chơi cùng
     fl: [{ pid: String, gid: Number, n: String, d: Date }], // follow list
-        // đối với biến user,
-        // player đc chọn sẽ đưa vào follow list.
-        // d: ngày kết bạn
+    // đối với biến user,
+    // player đc chọn sẽ đưa vào follow list.
+    // d: ngày kết bạn
     bannerShowedHistory: {
-        session: [{id: String, count: Number}],
-        day: [{id: String, count: Number}],
-        lifetime: [{id: String, count: Number}]
+        date: String,
+        // session: [{ ruleNumber: Number, count: Number }],
+        day: [{ ruleNumber: Number, count: Number }],
+        lifetime: [{ ruleNumber: Number, count: Number }]
     }
 });
 UserScheme.index({ uid: 1, app: 1 }, { unique: true });
@@ -196,7 +197,7 @@ exports.GreetingPopup = mongoose.model('GreetingPopup', {
     LQ: [Number],
     Vip: [Number],
     AG: [Number],
-    showLimit: Number,
+    bannerShowLimitRule: Number,
     requirePayment: Number,
     priority: Number,
     videoWatched: [Number],
@@ -241,7 +242,7 @@ exports.Type10Popup = mongoose.model('Type10Popup', {
     showType: Number, // 0: login, 1: lúc hết tiền
     title: String,
     note: String,
-    showLimit: Number, // số lần hiển thị tối da trong 1 ngày với 1 user
+    bannerShowLimitRule: Number, // 0: Ko quan tâm, 1: session, 2: day, 3: lifetime
     LQ: [Number],
     Vip: [Number],
     AG: [Number],
@@ -254,6 +255,9 @@ exports.Type10Popup = mongoose.model('Type10Popup', {
     st1_stake: [Number],
     st1_game: [Number],
     showDaily: [],
+    posButtonClose: { x: Number, y: Number },
+    isShowCloseSms: Boolean,
+    showTextButton: Boolean,
     date: { type: Date, index: true },
     dexp: { type: Date, index: true },
     url: String,
@@ -293,7 +297,7 @@ exports.BannerV2 = mongoose.model('BannerV2', {
     note: String,
     date: { type: Date, index: true },
     dexp: { type: Date, index: true },
-    showLimit: Number,
+    bannerShowLimitRule: Number,
     os: Number,
     requirePayment: Number,
     videoWatched: [Number],
@@ -316,4 +320,12 @@ exports.GPReport = mongoose.model('GPReport', {
     gpid: Number,
     title: String,
     result: {}
+});
+
+exports.BannerShowLimitRule = mongoose.model('BannerShowLimitRule', {
+    date: Date, //-> ngày tạo
+    ruleNumber: { type: Number, unique: true, required: true, dropDups: true, validate: value => (value > 0) }, //-> mã Rule
+    rule: String,
+    description: String, // -> mô tả
+    limit: Number
 });

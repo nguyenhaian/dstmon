@@ -67,8 +67,10 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
     //&& !iprange.inVietnam(user.ip)) {
     // nếu user cũ (ko gửi lq lên) thì ko gửi về
     var userag = 0;
+    var userdm = 0;
     if (_.has(user, 'ag')) userag = user.ag;
     if (_.has(user, 'gold')) userag = user.gold;
+    if (_.has(user, 'dm')) userdm = user.dm;
 
     if (!_.has(user, 'lq') || !_.has(user, 'vip'))
         return;
@@ -115,7 +117,7 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
 
         var pass_lq = user.lq >= d.LQ[0] && user.lq <= d.LQ[1];
         var pass_ag = userag >= d.AG[0] && userag <= d.AG[1];
-        var pass_dm = user.dm >= d.DM[0] && user.dm <= d.DM[1];
+        var pass_dm = userdm >= d.DM[0] && userdm <= d.DM[1];
         var pass_vip = user.vip >= d.Vip[0] && user.vip <= d.Vip[1];
         var pass_videoWatched = videoWatched >= d.videoWatched[0] && videoWatched <= d.videoWatched[1];
         var pass_filter = pass_lq && pass_ag && pass_dm && pass_vip && pass_videoWatched;
@@ -157,45 +159,45 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
         });
 
         // 3. lấy unique theo priority
-        sMesData = uniqBy(sMesData, function(item) {
-            return item.priority;
+        sMesData = uniqBy(sMesData, function(bannerItem) {
+            return bannerItem.priority;
         });
 
 
         if (!user.hasOwnProperty('popupHasShowed'))
             user.popupHasShowed = {};
 
-        var sMesData = sMesData.map(function(item) {
-            var urls = item.url.split(";");
+        var sMesData = sMesData.map(function(banner) {
+            var urls = banner.url.split(";");
             urls = urls.filter(function(d) {
                 return (/\S/.test(d));
             });
             // if (urls.length > 1) {
             var n = getRandomInt(0, urls.length - 1);
-            if (!_.has(user, item._id)) {
-                user[item._id] = {};
+            if (!_.has(user, banner._id)) {
+                user[banner._id] = {};
             }
-            // user[item._id].urls = item.url;
-            item.url = urls[n];
-            user[item._id].sMesIndex = n; // cái này quan trọng để cập nhật vào gpReport
-            user[item._id].url = item.url;
+            // user[banner._id].urls = banner.url;
+            banner.url = urls[n];
+            user[banner._id].sMesIndex = n; // cái này quan trọng để cập nhật vào gpReport
+            user[banner._id].url = banner.url;
 
             // console.log('#########RANDOM########## ' + user.username + ' ' + n + '/' + urls.length);
             // }
-            if (!user.popupHasShowed.hasOwnProperty(item.showType)) {
-                user.popupHasShowed[item.showType] = 0;
+            if (!user.popupHasShowed.hasOwnProperty(banner.showType)) {
+                user.popupHasShowed[banner.showType] = 0;
             }
-            user.popupHasShowed[item.showType]++;
+            user.popupHasShowed[banner.showType]++;
 
-            if (_.has(item, 'result'))
-                delete item.result;
+            if (_.has(banner, 'result'))
+                delete banner.result;
 
-            item = formatBannerButton(user, appconfig, item);
-            user.pendingBanners.push(item);
-            
+            banner = formatBannerButton(user, appconfig, banner);
+            user.pendingBanners.push(banner);
+
             // thêm data vào gpResult
             var ev = 'sent';
-            var id = item._id; // banner id;
+            var id = banner._id; // banner id;
             var date = moment().format("YYYY-MM-DD");
             var os = user.device_OS;
             var sindex = 0;
@@ -214,7 +216,38 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
 
             gpResult[id][ev]++;
 
-            return item;
+            // bannerShowedHistory: {
+            //     session: [{ ruleNumber: Number, count: Number }],
+            //     day: [{ ruleNumber: Number, count: Number }],
+            //     lifetime: [{ ruleNumber: Number, count: Number }]
+            // }
+
+            if (user.bannerShowedHistory.date != moment().format("YYYY-MM-DD")) {
+                // trường hợp dữ liệu của ngày trước, thì xóa dữ liệu user.bannerShowedHistory.day
+                user.bannerShowedHistory.day = [];
+            }
+
+            // TODO: add banner này vào nhóm kia bannerShowedHistory
+            function updateBannerShowedHistory(history, banner) {
+                var found = false;
+                for (var i = history.length - 1; i >= 0; i--) {
+                    var sbanner = history[i];
+                    if (sbanner.ruleNumber == banner.bannerShowLimitRule) {
+                        // found
+                        found = true;
+                        sbanner.count++;
+                        break;
+                    }
+                };
+                if (!found) {
+                    history.push({ ruleNumber: banner.bannerShowLimitRule || 0, count: 1 });
+                }
+            }
+            updateBannerShowedHistory(user.bannerShowedHistory.session, banner);
+            updateBannerShowedHistory(user.bannerShowedHistory.day, banner);
+            updateBannerShowedHistory(user.bannerShowedHistory.lifetime, banner);
+
+            return banner;
         });
 
         // if (user.username == 'giangvp11') {
@@ -226,7 +259,8 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
 
         MUser.findOneAndUpdate({ _id: user._id }, {
             $set: {
-                popupHasShowed: user.popupHasShowed
+                popupHasShowed: user.popupHasShowed,
+                bannerShowedHistory: user.bannerShowedHistory
             }
         }, { new: true }, function(err, doc) {
             if (err) {
@@ -350,6 +384,9 @@ exports.handleEvent = (user, data, uaResult) => {
             var value = data[subevent];
 
             handleReceiveGift(uaResult, user, subevent, value);
+            break;
+        case "statepayment":
+            console.log(user.username + ' - ' + JSON.stringify(data));
             break;
     }
 

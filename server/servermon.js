@@ -804,6 +804,51 @@ app.get('/siamaction', function(req, res) {
         });
 
 });
+
+app.get('/loginSuccess', function(req, res) {
+    // res.sendFile(__dirname + '/../client/index.html');
+
+    models.LoginSuccess.find({})
+        // .select('_id time formattedData')
+        // .where('time').gt(lastHours)
+        .sort({ _id: -1 })
+        .limit(100)
+        .exec(function(err, docs) {
+            if (err) return res.json(err);
+            res.json(docs);
+        });
+
+});
+
+app.get('/loadConfig', function(req, res) {
+    // res.sendFile(__dirname + '/../client/index.html');
+
+    models.LoadConfig.find({})
+        // .select('_id time formattedData')
+        // .where('time').gt(lastHours)
+        .sort({ _id: -1 })
+        .limit(100)
+        .exec(function(err, docs) {
+            if (err) return res.json(err);
+            res.json(docs);
+        });
+
+});
+
+app.get('/loginData', function(req, res) {
+    // res.sendFile(__dirname + '/../client/index.html');
+
+    models.LoginData.find({})
+        // .select('_id time formattedData')
+        // .where('time').gt(lastHours)
+        .sort({ _id: -1 })
+        .limit(100)
+        .exec(function(err, docs) {
+            if (err) return res.json(err);
+            res.json(docs);
+        });
+
+});
 // ************** end api notification ***************
 
 
@@ -932,7 +977,7 @@ app.get('/popupreport/:app', function(req, res) {
 
     var getGPAsycn = {
         query: function(queryObject, callback) {
-            queryObject.find({ app: { "$regex": app, "$options": "i" }  })
+            queryObject.find({ app: { "$regex": app, "$options": "i" } })
                 .select('_id title showType type priority Vip LQ AG url result')
                 .limit(200).lean().exec(function(err, docs) {
                     callback(err, docs);
@@ -1445,6 +1490,12 @@ app.post('/createBanner', function(req, res) {
             showDaily: [
                 [0, 24]
             ],
+            posButtonClose: {
+                x: -10,
+                y: -10
+            },
+            isShowCloseSms: false,
+            showTextButton: false,
             date: Date(),
             dexp: Date(),
             url: '',

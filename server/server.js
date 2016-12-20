@@ -529,6 +529,13 @@ function captureUserAction(socket, user, user_update) {
                         sendNotifyToFriendsOfUser(user);
                     }
 
+                    if (ruser.bannerShowedHistory) {
+                        user.bannerShowedHistory = ruser.bannerShowedHistory;
+                        user.bannerShowedHistory.session = [];
+                    } else {
+                        user.bannerShowedHistory = { date: moment().format("YYYY-MM-DD"), session: [], day: [], lifetime: [] };
+                    }
+
                     // biến phục vụ NOTE 28/10x
                     user.increaseLQ = ruser.increaseLQ || 0;
                     user.popupHasShowed = ruser.popupHasShowed || {};
@@ -662,11 +669,11 @@ function captureUserAction(socket, user, user_update) {
             if (user_update.vip != user.vip) {
                 // Xem xét bắn banner showType = 1
                 user.lastChangeVip = {
-                    value: user_update.vip,
-                    before: user.vip,
-                    date: Date()
-                }
-                // thực hiện gán giá trị luôn ở đây để đáp ứng lọc sendpopup
+                        value: user_update.vip,
+                        before: user.vip,
+                        date: Date()
+                    }
+                    // thực hiện gán giá trị luôn ở đây để đáp ứng lọc sendpopup
                 user.vip = user_update.vip;
                 var sMesData = sMesData2;
                 var sMes = [];
@@ -1633,7 +1640,7 @@ function handleConnection(socket, app) {
             case 'leaveTable':
                 var ag = data.ag;
                 var dm = data.dm;
-                var staketype = _.has(data, 'staketype') ? data.staketype : (_.has(data, 'type') ? data.type: undefined);
+                var staketype = _.has(data, 'staketype') ? data.staketype : (_.has(data, 'type') ? data.type : undefined);
                 var stake = data.stake;
                 var sMesData = sMesData1;
                 var sMes = [];
