@@ -167,8 +167,8 @@ var UserScheme = new mongoose.Schema({
     bannerShowedHistory: {
         date: String,
         // session: [{ ruleNumber: Number, count: Number }],
-        day: [{ ruleNumber: Number, count: Number }],
-        lifetime: [{ ruleNumber: Number, count: Number }]
+        day: [], //[{ ruleNumber: Number, count: Number }],
+        lifetime: []//{ ruleNumber: Number, count: Number }]
     }
 });
 UserScheme.index({ uid: 1, app: 1 }, { unique: true });

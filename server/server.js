@@ -101,6 +101,13 @@ models.Dist.find({})
         });
     });
 
+models.BannerShowLimitRule.find({})
+    // .select({ id: 1, data: 1, _id: 0 })
+    .lean().exec(function(err, docs) {
+        if (err) return console.log(err);
+        appconfig.bannerShowLimitRule = docs;
+    });
+
 var getGPAsycn = {
     query: function(queryObject, callback) {
         queryObject.find({ date: { $lte: new Date() }, dexp: { $gte: new Date() } }) //.select('-result')
@@ -509,70 +516,77 @@ function captureUserAction(socket, user, user_update) {
             addOrUpdateUserToDB(iuser, function(ruser) {
                 // user.ruser = ruser;
                 // ruser có thể là null, nên phải check trước
-                if (ruser && user) { // update ngược lại lastUpdateFB vào input, để dễ dàng quyết định có sử dụng getExtraInfo hay ko
-                    // ở đây user chính là connectedDevices[socket.id]
-                    // nên hy vọng ở call back vẫn trỏ đc đến connectedDevices[socket.id]
-                    // đồng thời phải lưu ý, vì connectedDevices[socket.id] có thể đã bị remove, nên phải check luôn đk này
-                    if (ruser.lastUpdateFB) user.lastUpdateFB = ruser.lastUpdateFB;
-                    if (ruser.lastSentNotify) user.lastSentNotify = ruser.lastSentNotify;
-                    if (ruser.email) user.email = ruser.email;
-                    if (ruser.fbID) user.fbID = ruser.fbID;
-                    if (ruser.fbName) user.fbName = ruser.fbName;
-                    // if (ruser.sMsg) user.sMsg = ruser.sMsg;
-                    if (ruser.dev) user._dev = ruser.dev;
-                    if (ruser.disid) user._dis = ruser.disid;
-                    if (ruser.ip) user._ip = ruser.ip;
-                    if (ruser._id) user._id = ruser._id;
-                    if (ruser.lqc) user.lqc = ruser.lqc;
-                    if (ruser.fFB) {
-                        user.fFB = ruser.fFB;
-                        sendNotifyToFriendsOfUser(user);
-                    }
-
-                    if (ruser.bannerShowedHistory) {
-                        user.bannerShowedHistory = ruser.bannerShowedHistory;
-                        user.bannerShowedHistory.session = [];
-                    } else {
-                        user.bannerShowedHistory = { date: moment().format("YYYY-MM-DD"), session: [], day: [], lifetime: [] };
-                    }
-
-                    // biến phục vụ NOTE 28/10x
-                    user.increaseLQ = ruser.increaseLQ || 0;
-                    user.popupHasShowed = ruser.popupHasShowed || {};
-                    user.loginCount = (ruser.loginCount || 0) + 1;
-
-                    if (moment().day() > moment(ruser.d2).day()) {
-                        // lần đầu tiên login ngày mới.
-                        user.increaseLQ = 0;
-                        user.popupHasShowed = {};
-                        user.loginCount = 1;
-                    }
-
-                    user.lastSaveToDB = new Date();
-
-                    socket.emit('event', { event: 'friends', data: ["an", "huu anh", "lam", "giang"], vip: [1, 2, 3, 4] });
-
-                    // thời điểm bắn sMes
-                    // kiểm tra những sMes mà user đã nhận so với sMes của server
-                    // order lại thứ tự nhận rồi emit về cho user
-                    var sMesData = sMesData0;
-                    var sMes = [];
-                    Object.keys(sMesData).map(function(appnames) {
-                        if (appnames.includes(user.app)) {
-                            sMes = sMes.concat(sMesData[appnames]);
-                        }
-                    });
-                    utils.sendPopups(socket, models.MUser, user, sMes, appconfig, gpResult);
-
-                    // kiểm tra firstlogin để trả về news
-                    // var YESTERDAY = moment().clone().subtract(1, 'days').startOf('day');
-                    // if (moment(ruser.d2).isSame(YESTERDAY, 'd')) // d2 là last online time
-                    // {   
-                    // kiểm tra cách ngày
-                    // } else {
-                    // nếu dùng chính sách khác, có thể cho vào đây. 
-                    // CS1: đấu trường chỉ cần ko bắn dầy
+                if (!ruser || !user)
+                    return;
+                // update ngược lại lastUpdateFB vào input, để dễ dàng quyết định có sử dụng getExtraInfo hay ko
+                // ở đây user chính là connectedDevices[socket.id]
+                // nên hy vọng ở call back vẫn trỏ đc đến connectedDevices[socket.id]
+                // đồng thời phải lưu ý, vì connectedDevices[socket.id] có thể đã bị remove, nên phải check luôn đk này
+                if (ruser.lastUpdateFB) user.lastUpdateFB = ruser.lastUpdateFB;
+                if (ruser.lastSentNotify) user.lastSentNotify = ruser.lastSentNotify;
+                if (ruser.email) user.email = ruser.email;
+                if (ruser.fbID) user.fbID = ruser.fbID;
+                if (ruser.fbName) user.fbName = ruser.fbName;
+                // if (ruser.sMsg) user.sMsg = ruser.sMsg;
+                if (ruser.dev) user._dev = ruser.dev;
+                if (ruser.disid) user._dis = ruser.disid;
+                if (ruser.ip) user._ip = ruser.ip;
+                if (ruser._id) user._id = ruser._id;
+                if (ruser.lqc) user.lqc = ruser.lqc;
+                if (ruser.fFB) {
+                    user.fFB = ruser.fFB;
+                    sendNotifyToFriendsOfUser(user);
                 }
+
+                if (ruser.bannerShowedHistory) {
+                    // => comment1: lưu ý là check như này luôn đúng, nên ko thể phát hiện user ko có history
+                    // vì ruser ko thay đổi được nên phải cloneDeep
+                    user.bannerShowedHistory = { session: [] };
+                    _.extend(user.bannerShowedHistory, ruser.bannerShowedHistory);
+                    if (!user.bannerShowedHistory.date)
+                        user.bannerShowedHistory.date = moment().format("YYYY-MM-DD");
+                } else {
+                    // comment2: Vẫn có trường hợp user mới lần đầu đăng nhập, ruser = iuser => user.bannerShowedHistory = undefined
+                    user.bannerShowedHistory = { date: moment().format("YYYY-MM-DD"), session: [], day: [], lifetime: [] };
+                }
+
+                // biến phục vụ NOTE 28/10x
+                user.increaseLQ = ruser.increaseLQ || 0;
+                user.popupHasShowed = ruser.popupHasShowed || {};
+                user.loginCount = (ruser.loginCount || 0) + 1;
+
+                if (moment().day() > moment(ruser.d2).day()) {
+                    // lần đầu tiên login ngày mới.
+                    user.increaseLQ = 0;
+                    user.popupHasShowed = {};
+                    user.loginCount = 1;
+                }
+
+                user.lastSaveToDB = new Date();
+
+                socket.emit('event', { event: 'friends', data: ["an", "huu anh", "lam", "giang"], vip: [1, 2, 3, 4] });
+
+                // thời điểm bắn sMes
+                // kiểm tra những sMes mà user đã nhận so với sMes của server
+                // order lại thứ tự nhận rồi emit về cho user
+                var sMesData = sMesData0;
+                var sMes = [];
+                Object.keys(sMesData).map(function(appnames) {
+                    if (appnames.includes(user.app)) {
+                        sMes = sMes.concat(sMesData[appnames]);
+                    }
+                });
+                utils.sendPopups(socket, models.MUser, user, sMes, appconfig, gpResult);
+
+                // kiểm tra firstlogin để trả về news
+                // var YESTERDAY = moment().clone().subtract(1, 'days').startOf('day');
+                // if (moment(ruser.d2).isSame(YESTERDAY, 'd')) // d2 là last online time
+                // {   
+                // kiểm tra cách ngày
+                // } else {
+                // nếu dùng chính sách khác, có thể cho vào đây. 
+                // CS1: đấu trường chỉ cần ko bắn dầy
+
             });
         } else {
             // 2. user chưa login, disconnect
@@ -869,6 +883,13 @@ app.post('/testevent', function(req, res) {
 app.get('/sMes', function(req, res) {
     utils = reload('./utils.js');
 
+    models.BannerShowLimitRule.find({})
+        // .select({ id: 1, data: 1, _id: 0 })
+        .lean().exec(function(err, docs) {
+            if (err) return console.log(err);
+            appconfig.bannerShowLimitRule = docs;
+        });
+
     async.map([models.SMessage, models.GreetingPopup, models.Type10Popup, models.BannerV2], getGPAsycn.query.bind(getGPAsycn), function(err, result) {
         if (err) {
             res.send(JSON.stringify(err, null, 3));
@@ -916,6 +937,37 @@ app.get('/sMes', function(req, res) {
         res.send(JSON.stringify(ret, null, 3));
 
     });
+});
+
+app.get('/sMes/:id', function(req, res) {
+    var bannerid = req.params.id;
+
+    function findBannerByID(data, id) {
+        var result = { err: 'not found' };
+        _.forEach(data, function(banners, app) {
+            _.forEach(banners, function(banner) {
+                if (banner._id == id) {
+                    result = banner;
+                    return false;
+                };
+            });
+            // break vòng for lớn.
+            if (!result.err)
+                return false;
+        });
+        return result;
+    }
+
+    res.setHeader('Content-Type', 'application/json');
+
+    var banner = { err: 'not found' };
+    _.forEach([sMesData0, sMesData1, sMesData2], function(sMesData) {
+        banner = findBannerByID(sMesData, bannerid);
+        if (!banner.err) {
+            return false;
+        }
+    });
+    res.send(JSON.stringify(banner, null, 3));
 });
 
 app.get('/dist', function(req, res) {
@@ -1504,7 +1556,20 @@ function handleConnection(socket, app) {
 
         var user = connectedDevices[socket.id];
 
-        var hasConsumed = utils.handleEvent(user, data, uaResult);
+        // gom banner vào sMesDate
+        var sMesData = [];
+
+        _.forEach(sMesData0, function(value, key) {
+            sMesData = sMesData.concat(value);
+        })
+        _.forEach(sMesData1, function(value, key) {
+            sMesData = sMesData.concat(value);
+        })
+        _.forEach(sMesData2, function(value, key) {
+            sMesData = sMesData.concat(value);
+        })
+
+        var hasConsumed = utils.handleEvent(models.MUser, user, data, sMesData, uaResult);
         if (hasConsumed)
             return;
 
@@ -1831,6 +1896,14 @@ setInterval(function() {
     var maxlength = 24 * 60 * 60 / 30;
     if (timelineFormattedData.length > maxlength)
         timelineFormattedData.pop();
+
+    // update lại BannerShowLimitRule
+    models.BannerShowLimitRule.find({})
+        // .select({ id: 1, data: 1, _id: 0 })
+        .lean().exec(function(err, docs) {
+            if (err) return console.log(err);
+            appconfig.bannerShowLimitRule = docs;
+        });
 
     try {
         // load lại config

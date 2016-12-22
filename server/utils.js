@@ -42,6 +42,8 @@ function shuffle(array) {
 }
 
 function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
+    var history = user.bannerShowedHistory;
+
     // return true nếu bắn thành công, return false ngược lại
     if (!sMes || sMes.length < 1)
         return false;
@@ -62,7 +64,9 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
         }
     }
     user.pendingBanners = [];
-    user.initBanners = sMes;
+    user.initBanners = sMes.map(function(banner) {
+        return appconfig.socketapp + "/sMes/" + banner._id;
+    });
 
     //&& !iprange.inVietnam(user.ip)) {
     // nếu user cũ (ko gửi lq lên) thì ko gửi về
@@ -73,8 +77,14 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
     if (_.has(user, 'dm')) userdm = user.dm;
 
     if (!_.has(user, 'lq') || !_.has(user, 'vip'))
+    // cái này để xác nhận user đã login, tránh trường hợp user mới, user = ruser = iuser
         return;
 
+    if (user.bannerShowedHistory.date != moment().format("YYYY-MM-DD")) {
+        // trường hợp dữ liệu của ngày trước, thì xóa dữ liệu user.bannerShowedHistory.day
+        user.bannerShowedHistory.date = moment().format("YYYY-MM-DD");
+        user.bannerShowedHistory.day = [];
+    };
     // lọc sMesData
     sMesData = sMesData.filter(function(d) {
         if (!d.hasOwnProperty('requirePayment'))
@@ -121,9 +131,47 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
         var pass_vip = user.vip >= d.Vip[0] && user.vip <= d.Vip[1];
         var pass_videoWatched = videoWatched >= d.videoWatched[0] && videoWatched <= d.videoWatched[1];
         var pass_filter = pass_lq && pass_ag && pass_dm && pass_vip && pass_videoWatched;
+
+        var pass_limitrule = true;
+
+        function findRuleByNumber(rules, ruleNumber) {
+            for (var i = rules.length - 1; i >= 0; i--) {
+                var rule = rules[i];
+                if (rule.ruleNumber == ruleNumber) {
+                    return rule;
+                }
+            };
+            return { err: "not found" };
+        }
+        if (_.has(d, 'bannerShowLimitRule') && d.bannerShowLimitRule > 0) {
+            // tìm rule của banner
+            var ruleNumber = d.bannerShowLimitRule;
+            var rule = findRuleByNumber(appconfig.bannerShowLimitRule, ruleNumber);
+            // {
+            //     _id: "585224186a338c122855a6c7",
+            //     date: "2016-12-15T05:03:20.000Z",
+            //     ruleNumber: 1,
+            //     rule: "day",
+            //     description: "test rule",
+            //     limit: 1,
+            //     __v: 0
+            // },
+            // check với cả history 
+            var ruletype = rule.rule;
+            var showed = findRuleByNumber(history[ruletype], ruleNumber);
+            // showed = {
+            //     ruleNumber: 0,
+            //     count: 5
+            // }
+            if (showed.count >= rule.limit)
+                pass_limitrule = false;
+
+        }
+
         pass_filter &= pass_lqcheck;
         pass_filter &= pass_oscheck;
         pass_filter &= pass_versioncheck;
+        pass_filter &= pass_limitrule;
 
         user.pass_lq = pass_lq;
         user.pass_ag = pass_ag;
@@ -133,6 +181,7 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
         user.pass_lqcheck = pass_lqcheck;
         user.pass_oscheck = pass_oscheck;
         user.pass_versioncheck = pass_versioncheck;
+        user.pass_limitrule = pass_limitrule;
 
         user.pass_filterx = pass_filter;
         return pass_filter;
@@ -163,7 +212,6 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
             return bannerItem.priority;
         });
 
-
         if (!user.hasOwnProperty('popupHasShowed'))
             user.popupHasShowed = {};
 
@@ -193,7 +241,7 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
                 delete banner.result;
 
             banner = formatBannerButton(user, appconfig, banner);
-            user.pendingBanners.push(banner);
+            user.pendingBanners.push(appconfig.socketapp + "/sMes/" + banner._id);
 
             // thêm data vào gpResult
             var ev = 'sent';
@@ -216,37 +264,6 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
 
             gpResult[id][ev]++;
 
-            // bannerShowedHistory: {
-            //     session: [{ ruleNumber: Number, count: Number }],
-            //     day: [{ ruleNumber: Number, count: Number }],
-            //     lifetime: [{ ruleNumber: Number, count: Number }]
-            // }
-
-            if (user.bannerShowedHistory.date != moment().format("YYYY-MM-DD")) {
-                // trường hợp dữ liệu của ngày trước, thì xóa dữ liệu user.bannerShowedHistory.day
-                user.bannerShowedHistory.day = [];
-            }
-
-            // TODO: add banner này vào nhóm kia bannerShowedHistory
-            function updateBannerShowedHistory(history, banner) {
-                var found = false;
-                for (var i = history.length - 1; i >= 0; i--) {
-                    var sbanner = history[i];
-                    if (sbanner.ruleNumber == banner.bannerShowLimitRule) {
-                        // found
-                        found = true;
-                        sbanner.count++;
-                        break;
-                    }
-                };
-                if (!found) {
-                    history.push({ ruleNumber: banner.bannerShowLimitRule || 0, count: 1 });
-                }
-            }
-            updateBannerShowedHistory(user.bannerShowedHistory.session, banner);
-            updateBannerShowedHistory(user.bannerShowedHistory.day, banner);
-            updateBannerShowedHistory(user.bannerShowedHistory.lifetime, banner);
-
             return banner;
         });
 
@@ -256,18 +273,6 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
 
         socket.emit('event', { event: 'news', data: sMesData });
         user.hasGetPopup = { date: new Date(), title: sMesData[0].title, type: sMesData[0].type, size: sMesData.length };
-
-        MUser.findOneAndUpdate({ _id: user._id }, {
-            $set: {
-                popupHasShowed: user.popupHasShowed,
-                bannerShowedHistory: user.bannerShowedHistory
-            }
-        }, { new: true }, function(err, doc) {
-            if (err) {
-                console.log("Something wrong when updating user.popupHasShowed ");
-                console.log(err);
-            }
-        });
 
         return true;
     }
@@ -333,10 +338,47 @@ exports.filterShowType2 = (sMesData, user) => {
     });
 }
 
-exports.handleEvent = (user, data, uaResult) => {
+exports.handleEvent = (MUser, user, data, sMesData, uaResult) => {
     // if (user.username != 'giangvp11' || user.username == 'annguyen01')
     //     return;
     var hasConsumed = false;
+
+    function findBannerByID(bannerid) {
+        var result = { err: 'not found' };
+        _.forEach(sMesData, function(banner) {
+            if (banner._id == bannerid) {
+                result = banner;
+                return false;
+            }
+        })
+
+        return result;
+    }
+
+    function updateBannerShowedHistory(history, banner) {
+        // trường hợp dị dạng là user.bannerShowedHistory.session = undefined;
+        if (!history)
+            return;
+
+        var bannerShowLimitRule = banner.bannerShowLimitRule || 0;
+        var found = false;
+        for (var i = history.length - 1; i >= 0; i--) {
+            var sbanner = history[i];
+            // console.log("matching sbanner.ruleNumber %d vs banner.bannerShowLimitRule %d",sbanner.ruleNumber, banner.bannerShowLimitRule);
+            // note: bannerShowLimitRule = NaN
+
+            if (sbanner.ruleNumber == bannerShowLimitRule) {
+                // console.log("found = true");
+                // found
+                found = true;
+                sbanner.count++;
+                break;
+            }
+        };
+        if (!found) {
+            history.push({ ruleNumber: bannerShowLimitRule || 0, count: 1 });
+        }
+    }
 
     switch (data.event) {
         case 'clickButtonBanner':
@@ -368,8 +410,28 @@ exports.handleEvent = (user, data, uaResult) => {
                 user[id]['result'] = [];
 
             user[id]['result'].push(ev);
-            // console.log('____________REACT____________');
-            // console.log(ev);
+
+            // TODO: add banner này vào nhóm kia bannerShowedHistory
+            var banner = findBannerByID(id);
+            if (!banner.err) {
+                user[id].limitRuleNumber = banner.bannerShowLimitRule || 0;
+
+                updateBannerShowedHistory(user.bannerShowedHistory.session, banner);
+                updateBannerShowedHistory(user.bannerShowedHistory.day, banner);
+                updateBannerShowedHistory(user.bannerShowedHistory.lifetime, banner);
+            }
+
+            MUser.findOneAndUpdate({ _id: user._id }, {
+                $set: {
+                    popupHasShowed: user.popupHasShowed,
+                    bannerShowedHistory: user.bannerShowedHistory
+                }
+            }, { new: true }, function(err, doc) {
+                if (err) {
+                    console.log("Something wrong when updating user.popupHasShowed ");
+                    console.log(err);
+                }
+            });
             break;
         case 'receivegift':
             console.log(user.username + ' - ' + JSON.stringify(data));
