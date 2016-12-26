@@ -5,6 +5,9 @@ const mongoose = require('mongoose')
 const chalk = require('chalk');
 const numeral = require('numeral');
 
+console.log('*******************');
+console.log('init Utils.js');
+
 function getTimeStamp() {
     return (moment().format("YYYY-MM-DD HH:mm:ss"));
 }
@@ -50,22 +53,24 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
 
     var sMesData = _.cloneDeep(sMes);
 
-    if (user.app == "dautruong") {
-        if (user.device_OS == "Android" && user.app_version < "4.0") {
-            // những bản này chỉ handle message kiểu cũ, chứa 'pos'
-            sMesData = sMesData.filter(function(item) {
-                return _.has(item, 'pos');
-            });
-        } else {
-            // những bản còn lại chỉ hiện popup chứa arrPos
-            sMesData = sMesData.filter(function(item) {
-                return _.has(item, 'arrPos');
-            });
-        }
-    }
+    // if (user.app == "dautruong") {
+    //     if (user.device_OS == "Android" && user.app_version < "4.0") {
+    //         // những bản này chỉ handle message kiểu cũ, chứa 'pos'
+    //         sMesData = sMesData.filter(function(item) {
+    //             return _.has(item, 'pos');
+    //         });
+    //     } else {
+    //         // những bản còn lại chỉ hiện popup chứa arrPos
+    //         sMesData = sMesData.filter(function(item) {
+    //             return _.has(item, 'arrPos');
+    //         });
+    //     }
+    // }
+
     user.pendingBanners = [];
-    user.initBanners = sMes.map(function(banner) {
-        return appconfig.socketapp + "/sMes/" + banner._id;
+    user.initBanners = {};
+    sMesData.map(function(banner) {
+        user.initBanners[banner._id] = { detail: appconfig.socketapp + "/sMes/" + banner._id };
     });
 
     //&& !iprange.inVietnam(user.ip)) {
@@ -80,10 +85,10 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
     // cái này để xác nhận user đã login, tránh trường hợp user mới, user = ruser = iuser
         return;
 
-    if (user.bannerShowedHistory.date != moment().format("YYYY-MM-DD")) {
-        // trường hợp dữ liệu của ngày trước, thì xóa dữ liệu user.bannerShowedHistory.day
-        user.bannerShowedHistory.date = moment().format("YYYY-MM-DD");
-        user.bannerShowedHistory.day = [];
+    if (history.date != moment().format("YYYY-MM-DD")) {
+        // trường hợp dữ liệu của ngày trước, thì xóa dữ liệu history.day
+        history.date = moment().format("YYYY-MM-DD");
+        history.day = [];
     };
     // lọc sMesData
     sMesData = sMesData.filter(function(d) {
@@ -102,11 +107,14 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
         // 1 -> iOS
         // 2 -> Android
         var pass_oscheck = (user.device_OS == 'iOS' && d.os == 1) || (user.device_OS == 'Android' && d.os == 2) || (d.os == 0);
+        user.initBanners[d._id].pass_oscheck = pass_oscheck;
 
         var version = parseFloat(user.app_version)
         if (!d.hasOwnProperty('version'))
             d.version = [0, 1000];
         var pass_versioncheck = (version >= d.version[0] && version <= d.version[1]);
+        user.initBanners[d._id].pass_versioncheck = pass_versioncheck;
+
         if (!_.has(d, 'LQ')) {
             d.LQ = [0, 100000000];
         }
@@ -126,10 +134,20 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
         var videoWatched = user.videoWatched || 0;
 
         var pass_lq = user.lq >= d.LQ[0] && user.lq <= d.LQ[1];
+        user.initBanners[d._id].pass_lq = { res: pass_lq, userlq: user.lq, min: d.LQ[0], max: d.LQ[1] };
+
         var pass_ag = userag >= d.AG[0] && userag <= d.AG[1];
+        user.initBanners[d._id].pass_ag = { res: pass_ag, userag: userag, min: d.AG[0], max: d.AG[1] };
+
         var pass_dm = userdm >= d.DM[0] && userdm <= d.DM[1];
+        user.initBanners[d._id].pass_dm = { res: pass_dm, userdm: userdm, min: d.DM[0], max: d.DM[1] };
+
         var pass_vip = user.vip >= d.Vip[0] && user.vip <= d.Vip[1];
+        user.initBanners[d._id].pass_vip = { res: pass_vip, uservip: user.vip, min: d.Vip[0], max: d.Vip[1] };
+
         var pass_videoWatched = videoWatched >= d.videoWatched[0] && videoWatched <= d.videoWatched[1];
+        user.initBanners[d._id].pass_videoWatched = { res: pass_videoWatched, uservideoWatched: videoWatched, min: d.videoWatched[0], max: d.videoWatched[1] };
+
         var pass_filter = pass_lq && pass_ag && pass_dm && pass_vip && pass_videoWatched;
 
         var pass_limitrule = true;
@@ -157,33 +175,26 @@ function sendPopups(socket, MUser, user, sMes, appconfig, gpResult) {
             //     __v: 0
             // },
             // check với cả history 
-            var ruletype = rule.rule;
-            var showed = findRuleByNumber(history[ruletype], ruleNumber);
-            // showed = {
-            //     ruleNumber: 0,
-            //     count: 5
-            // }
-            if (showed.count >= rule.limit)
-                pass_limitrule = false;
-
+            if (!rule.err) { // trong trường hợp xóa hết rule, thì rule = {err: 'not found'}
+                var ruletype = rule.rule;
+                var showed = findRuleByNumber(history[ruletype], ruleNumber);
+                // showed = {
+                //     ruleNumber: 0,
+                //     count: 5
+                // }
+                if (showed.count >= rule.limit)
+                    pass_limitrule = false;
+            }
         }
+
+        user.initBanners[d._id].pass_limitrule = pass_limitrule;
 
         pass_filter &= pass_lqcheck;
         pass_filter &= pass_oscheck;
         pass_filter &= pass_versioncheck;
         pass_filter &= pass_limitrule;
 
-        user.pass_lq = pass_lq;
-        user.pass_ag = pass_ag;
-        user.pass_dm = pass_dm;
-        user.pass_vip = pass_vip;
-        user.pass_videoWatched = pass_videoWatched;
-        user.pass_lqcheck = pass_lqcheck;
-        user.pass_oscheck = pass_oscheck;
-        user.pass_versioncheck = pass_versioncheck;
-        user.pass_limitrule = pass_limitrule;
-
-        user.pass_filterx = pass_filter;
+        user.initBanners[d._id].pass_filter = pass_filter;
         return pass_filter;
     });
     // NOTE 28/10: một số popup hoạt động theo kiểu
@@ -616,6 +627,10 @@ var formatBannerButton = function(user, appconfig, bannerItem) { // op là provi
                     iap = false;
                     var paymentitems = [];
                     var paymentitemsbonus = [];
+
+                    if (!paymentProviders) {
+                        break;
+                    }
 
                     for (var i = paymentProviders.length - 1; i >= 0; i--) {
                         var provider = paymentProviders[i];

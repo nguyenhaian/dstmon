@@ -5,7 +5,7 @@
         .module('chartApp')
         .controller('GPopupController', GPopupController);
 
-    GPopupController.$inject = ['$scope', '$http', '$timeout', 'socket', '$compile'];
+    GPopupController.$inject = ['$scope', '$http', '$timeout', 'socket', '$compile', 'appconfig'];
 
     function formatImageUrl(url) {
         var url_s = url.split(";");
@@ -15,11 +15,11 @@
         return url_s;
     }
 
-    function GPopupController($scope, $http, $timeout, socket, $compile) {
+    function GPopupController($scope, $http, $timeout, socket, $compile, appconfig) {
         // init
         $scope.inloading = false;
         $scope.target = {
-            apps: ["dautruong", "3c", "52"]
+            apps: appconfig.apps
         };
         $scope.target.selectedApp = $scope.target.apps[0];
 

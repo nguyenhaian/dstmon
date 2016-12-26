@@ -1,40 +1,64 @@
 (function() {
     'use strict';
 
-    function readTextFile(file, callback) {
-        var rawFile = new XMLHttpRequest();
-        rawFile.overrideMimeType("application/json");
-        rawFile.open("GET", file, true);
-        rawFile.onreadystatechange = function() {
-            if (rawFile.readyState === 4 && rawFile.status == "200") {
-                callback(rawFile.responseText);
-            }
-        }
-        rawFile.send(null);
-    }
-
     angular
         .module('chartApp')
-        .factory('socket', ['d3s', '$rootScope', '$location', '$http', function(d3s, $rootScope, $location, $http) {
-            var absUrl = $location.absUrl();
-            var indexofsharp = absUrl.indexOf('#');
-            if (indexofsharp > 0) {
-                absUrl = absUrl.substring(0, indexofsharp);
-            }
+        .factory('socket', ['d3s', '$rootScope', '$location', '$http', 'appconfig', function(d3s, $rootScope, $location, $http, appconfig) {
             var startLoadingTime = null;
-            // var url = 'http://203.162.121.174:3003/tracker';
-            // var url = absUrl + 'tracker';
-            var url = "http://tracker.dstmon.space/tracker";
-            console.log('absUrl: ' + absUrl)
-            var socket = io(url, { transports: ['websocket'] });
-            var appconfig = {};
 
-            //usage:
-            readTextFile("/assets/config.json", function(text) {
-                var data = JSON.parse(text);
-                console.log(data);
-                appconfig.trackerurl = data.trackerurl;
-                appconfig.socketurl = data.socketurl;
+            var socket = io(appconfig.socketurl, { transports: ['websocket'] });
+
+            socket.on("connection", function(data) {
+                console.log("****** connection ******");
+            });
+
+            socket.on("mobile_reginfo", function(data) {
+                console.log("<---- mobile_reginfo ");
+            });
+
+            socket.on("mobile_changeScene", function(data) {
+                console.log("<---- mobile_changeScene");
+            });
+
+            socket.on("mobile_disconnect", function(data) {
+                console.log("<---- mobile_disconnect");
+                // $scope.signals.push(JSON.stringify(data));
+
+                // console.log("<---- signals " + $scope.signals.length);
+                // $rootScope.$apply(function () {
+                //  // callback.apply(socket, args);
+                // });
+            });
+
+            socket.on('tld.response', function(jsondata) {
+                console.log(getTimeStamp() + " <---- response timeline data: " + jsondata.length);
+                var duration = moment.duration(moment().diff(startLoadingTime)).asSeconds();
+                $rootScope.$broadcast('tld.response', {
+                    status: 'done',
+                    duration: duration
+                });
+                d3s.fillTimeLineData(jsondata);
+            });
+
+            socket.on('tld.response.error', function(error) {
+                console.log(getTimeStamp() + " <---- response timeline error: " + error);
+                $rootScope.$broadcast('tld.response', {
+                    status: 'error',
+                    error: error,
+                    duration: duration
+                });
+            });
+
+            // deprecated
+            socket.on('dist.response', function(jsondata) {
+                console.log(getTimeStamp() + " <---- response dist data: " + _.size(jsondata.data));
+                if (!jsondata.status) {
+                    console.log('dist.response false');
+                    return;
+                }
+
+                d3s.setDist(jsondata.data);
+                // loginData({ oncache: true, limit: 72 });
             });
 
             var getTimeStamp = function() {
@@ -117,7 +141,8 @@
                     });
                     onSuccess(jsondata);
                 }, function errorCallback(error) {
-                    console.log(getTimeStamp() + " <---- response xpost error: " + error);
+                    console.log(getTimeStamp() + " <---- response xpost error: " + JSON.stringify(error));
+                    var duration = moment.duration(moment().diff(startLoadingTime)).asSeconds();
                     $rootScope.$broadcast('response', {
                         status: 'error',
                         error: error,
@@ -126,59 +151,6 @@
                 });
                 startLoadingTime = moment();
             }
-
-            socket.on("connection", function(data){
-                console.log("****** connection ******");
-            });
-
-            socket.on("mobile_reginfo", function(data) {
-                console.log("<---- mobile_reginfo ");
-            });
-
-            socket.on("mobile_changeScene", function(data) {
-                console.log("<---- mobile_changeScene");
-            });
-
-            socket.on("mobile_disconnect", function(data) {
-                console.log("<---- mobile_disconnect");
-                // $scope.signals.push(JSON.stringify(data));
-
-                // console.log("<---- signals " + $scope.signals.length);
-                // $rootScope.$apply(function () {
-                //  // callback.apply(socket, args);
-                // });
-            });
-
-            socket.on('tld.response', function(jsondata) {
-                console.log(getTimeStamp() + " <---- response timeline data: " + jsondata.length);
-                var duration = moment.duration(moment().diff(startLoadingTime)).asSeconds();
-                $rootScope.$broadcast('tld.response', {
-                    status: 'done',
-                    duration: duration
-                });
-                d3s.fillTimeLineData(jsondata);
-            });
-
-            socket.on('tld.response.error', function(error) {
-                console.log(getTimeStamp() + " <---- response timeline error: " + error);
-                $rootScope.$broadcast('tld.response', {
-                    status: 'error',
-                    error: error,
-                    duration: duration
-                });
-            });
-
-            // deprecated
-            socket.on('dist.response', function(jsondata) {
-                console.log(getTimeStamp() + " <---- response dist data: " + _.size(jsondata.data));
-                if (!jsondata.status) {
-                    console.log('dist.response false');
-                    return;
-                }
-
-                d3s.setDist(jsondata.data);
-                // loginData({ oncache: true, limit: 72 });
-            });
 
             return {
                 reg: function(onSuccess) {
@@ -239,8 +211,49 @@
                 deleteBanner: function(option, onSuccess) {
                     xpost('/deleteBanner', option, onSuccess);
                 },
+                createBannerShowLimit: function(option, onSuccess) {
+                    // option:{
+                        // rule:{
+                        //     ruleNumber: 1,
+                        //     rule: day/lifetime/session,
+                        //     description: "",
+                        //     limit:1
+                        // }
+                    // }
+                    xpost('/createBannerShowLimit', option, onSuccess);
+                },
+                getBannerShowLimit: function(option, onSuccess) {
+                    // option:{
+                        // query:{
+                        //     ruleNumber: 1,
+                        //     rule: day/lifetime/session,
+                        //     description: "",
+                        //     limit:1
+                        // }
+                    // }
+                    xpost('/getBannerShowLimit', option, onSuccess);
+                },
+                saveBannerShowLimit: function(option, onSuccess) {
+                    // option:{
+                        // _id:"abcdefghiklmn...",
+                        // data:{
+                        //     ruleNumber: 1,
+                        //     rule: day/lifetime/session,
+                        //     description: "",
+                        //     limit:1
+                        // }
+                    // }
+                    xpost('/saveBannerShowLimit', option, onSuccess);
+                },
+                deleteBannerShowLimit: function(option, onSuccess) {
+                    // option:{
+                        // _id:"abcdefghiklmn..."
+                        // ruleNumber: 1
+                    // }
+                    xpost('/deleteBannerShowLimit', option, onSuccess);
+                },
                 sendTestBanner: function(option, onSuccess) {
-                    xpost(appconfig.socketurl + '/testevent', option, onSuccess);
+                    xpost(appconfig.appurl + '/testevent', option, onSuccess);
                 },
                 getCCU: function(option, onSuccess) {
                     xpost('/performancereport', option, onSuccess);

@@ -1,6 +1,0 @@
-{
-  "name": "cmon cluster server",
-  "script": "cluster.nginx.js",
-  "exec_mode": "fork_mode",
-  "instances": 0
-}

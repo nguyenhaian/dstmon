@@ -1,5 +1,11 @@
 var app = angular.module('chartApp', ['ngTouch', 'rgkevin.datetimeRangePicker', 'ui.bootstrap', 'ui.router']);
 
+app.constant('appconfig', {
+    socketurl: "http://socket.dstmon.space/tracker",
+    appurl: "http://app.dstmon.space",
+    apps: ["dautruong", "3c", "52"]
+});
+
 app.config(function($stateProvider, $urlRouterProvider) {
     //
     // For any unmatched url, redirect to /state1
@@ -40,6 +46,11 @@ app.config(function($stateProvider, $urlRouterProvider) {
             url: "/bannerv2",
             templateUrl: "views/home.bannerv2.html",
             controller: "BannerController"
+        })
+        .state('home.bannerLimitRule', {
+            url: "/bannerLimitRule",
+            templateUrl: "views/home.bannerlimitrule.html",
+            controller: "BannerLimitController"
         })
         .state('login', {
             url: "/login",

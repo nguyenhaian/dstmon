@@ -1,25 +1,53 @@
 var request = require('request');
 var _ = require('lodash');
 
-var clientsname = ["3C", "52fun", "dautruong", "UWin", "siam", "indo", "hilosea"];
-var paymentconfigurl = [
-    "http://mobile.tracking.88club.org/paymentconfig.json",
-    "http://mobile.tracking.52fun.club/paymentconfig.json",
-    "http://mobile.tracking.88club.org/paymentconfig.json",
-    "http://mobile.tracking.88club.org/paymentconfig.json",
-    "http://mobile.tracking.88club.org/paymentconfig.json",
-    "http://mobile.tracking.88club.org/paymentconfig.json",
-    "http://mobile.tracking.88club.org/paymentconfig.json"
-];
+var apps = [{
+    name: "3C",
+    paymentconfigurl: "http://mobile.tracking.88club.org/paymentconfig.json",
+    socketnamespace: "client3C"
+}, {
+    name: "52fun",
+    paymentconfigurl: "http://mobile.tracking.52fun.club/paymentconfig.json",
+    socketnamespace: "client52"
+}, {
+    name: "dautruong",
+    paymentconfigurl: "http://mobile.tracking.52fun.club/paymentconfig.json",
+    socketnamespace: "clientdt"
+}, {
+    name: "UWin",
+    paymentconfigurl: "http://mobile.tracking.88club.org/paymentconfig.json",
+    socketnamespace: "clientuwin"
+}, {
+    name: "siam",
+    paymentconfigurl: "http://mobile.tracking.88club.org/paymentconfig.json",
+    socketnamespace: "clientsiam"
+}, {
+    name: "indo",
+    paymentconfigurl: "http://mobile.tracking.88club.org/paymentconfig.json",
+    socketnamespace: "clientindo"
+}, {
+    name: "hilosea",
+    paymentconfigurl: "http://mobile.tracking.88club.org/paymentconfig.json",
+    socketnamespace: "clienthilosea"
+}];
 
+exports.apps = apps;
 
-exports.socketapp = "http://app.dstmon.space";
-exports.manapp = "http://man.dstmon.space";
-exports.socketclients = ["client3C", "client52", "clientdt", "clientuwin", "clientsiam", "clientindo", "clienthilosea"];
-exports.clientsname = clientsname;
-exports.paymentconfigurl = paymentconfigurl;
+exports.socketapp = "http://203.162.166.20:3000";
+exports.manapp = "http://203.162.166.20:3001";
+exports.port_app = 3000;
+exports.port_man = 3001;
+
+exports.mongodbConnection = 'mongodb://localhost/CustomerMonitor';
+
+exports.onesignalAuthKey = 'NGMzODk0ODQtMzE0Ni00N2Y5LWE3YmMtZDU1MjVkZDQ5ZTUz';
+exports.onesignalAppID = "0a8074bb-c0e4-48cc-8def-edd22ce17b9d";
+
+exports.sp_client_id = '081e09eb142aa9db1499fa10870dc4b2';
+exports.sp_client_secret = '18ff0e52f7aa496a0153609ff2fce9ef';
 exports.add_getac = 'https://api.sendpulse.com/oauth/access_token';
 exports.add_sendmail = 'https://api.sendpulse.com/smtp/emails';
+exports.sp_mailfrom = 'nguyenhaian@outlook.com';
 exports.maillist = [{
     name: "An Nguyen",
     email: "nguyenhaian1412@gmail.com"
@@ -91,12 +119,12 @@ exports.gamesbyid = {
 exports.sdisid = [2873, 2923];
 
 exports.loadpaymentconfig = function(appconfig) {
-    paymentconfigurl.map(function(url, index) {
-        var appname = clientsname[index];
+    apps.map(function(cfapp) {
+        var appname = cfapp.name;
         if (!_.has(appconfig, 'paymentconfig')) {
             appconfig['paymentconfig'] = {};
         }
-        request(url, function(error, response, data) {
+        request(cfapp.paymentconfigurl, function(error, response, data) {
             if (!error && response.statusCode == 200) {
                 try {
                     data = JSON.parse(data);

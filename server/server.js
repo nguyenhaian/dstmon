@@ -21,8 +21,8 @@ var appconfig = reload('./appconfig.js')
 // socketio namespaces
 var tracker = io.of('/tracker');
 // client namespace
-var cns = appconfig.socketclients.map(function(clientns, index) {
-    clientns = '/' + clientns;
+var cns = appconfig.apps.map(function(cfapp, index) { //cfapp = config-app, tránh nhầm với cả app là bản thân cái server này.
+    var clientns = '/' + cfapp.socketnamespace;
 
     // ***** đoạn này để trả về response 200 cho client ***** //
     app.get(clientns, function(req, res) {
@@ -31,7 +31,7 @@ var cns = appconfig.socketclients.map(function(clientns, index) {
 
     var client = io.of(clientns);
     client.on('connection', function(socket) {
-        handleConnection(socket, appconfig.clientsname[index]);
+        handleConnection(socket, cfapp.name);
     });
 
     return client;
@@ -74,7 +74,7 @@ var gpResult = {}; //lưu phản hồi của khách ở object này
 var uaResult = {}; //Lưu dữ liệu thống kê tương tác theo ngày
 
 /*************************************************************/
-mongoose.connect('mongodb://localhost/CustomerMonitor');
+mongoose.connect(appconfig.mongodbConnection);
 
 // init data when server startup
 /*************************************************************/
@@ -850,7 +850,7 @@ app.post('/testevent', function(req, res) {
         if (!_.isEmpty(banners)) {
             banners = banners.map(function(bannerItem) {
                 return utils.formatBannerButton({
-                    app: appconfig.clientsname[1],
+                    app: bannerItem.app,
                     provider: usercarrier,
                     username: username
                 }, appconfig, bannerItem);
@@ -1041,9 +1041,9 @@ function analyze_login_api() {
     // avgNetworkPerformanceData.login_failed
 
     // tạm fix cái này
-    var apps = appconfig.clientsname;
-    for (var i = 0; i < apps.length; i++) {
-        var appid = apps[i];
+    var cfapps = appconfig.apps;
+    for (var i = 0; i < cfapps.length; i++) {
+        var appid = cfapps[i].name;
 
         var count_loginFailed = 0;
         if (avgNetworkPerformanceData.login_failed && avgNetworkPerformanceData.login_failed[appid])
@@ -1371,7 +1371,7 @@ function getFBExtraData(FB, iuser, callback) {
     if (!iuser.lastUpdateFB || moment(iuser.lastUpdateFB).isBefore(yesterday)) {
         // console.log('step 1 ' + iuser.username + ' ac: ' + iuser.ac);
         var fb = FB.withAccessToken(iuser.ac);
-        console.log(iuser.ac);
+        // console.log(iuser.ac);
         // FB.setAccessToken(iuser.ac);
 
         fb.api('', 'post', {
@@ -1897,25 +1897,28 @@ setInterval(function() {
     if (timelineFormattedData.length > maxlength)
         timelineFormattedData.pop();
 
+
     // update lại BannerShowLimitRule
     models.BannerShowLimitRule.find({})
         // .select({ id: 1, data: 1, _id: 0 })
         .lean().exec(function(err, docs) {
             if (err) return console.log(err);
+
+            // note: Lưu ý đoạn dưới đây delete appconfig.paymentconfig vì reload, nên phải để phần load từ db ra ở phía sau reload()
+            try {
+                // load lại config
+                // note: vì load lại như này, và chưa kịp load lại paymentconfig nên có thời điểm ko tồn tại payment config.
+                var paymentconfig = appconfig.paymentconfig;
+                appconfig = reload('./appconfig.js');
+                // gán lại paymentconfig cũ trước khi lấy đc paymentconfig mới
+                appconfig.paymentconfig = paymentconfig;
+
+                // loạd lại paymentconfig
+                appconfig.loadpaymentconfig(appconfig);
+            } catch (e) {}
+
             appconfig.bannerShowLimitRule = docs;
         });
-
-    try {
-        // load lại config
-        // note: vì load lại như này, và chưa kịp load lại paymentconfig nên có thời điểm ko tồn tại payment config.
-        var paymentconfig = appconfig.paymentconfig;
-        appconfig = reload('./appconfig.js');
-        // gán lại paymentconfig cũ trước khi lấy đc paymentconfig mới
-        appconfig.paymentconfig = paymentconfig;
-
-        // loạd lại paymentconfig
-        appconfig.loadpaymentconfig(appconfig);
-    } catch (e) {}
 
     /** TODO: xác định những bất thường */
     analyze_ccu(ccus_byapp, appconfig, 'appid', lastRecordsCCUS);
@@ -2274,10 +2277,10 @@ function sendWarningMail(maillist, appid, msg, fullreport, type) {
         url: 'https://onesignal.com/api/v1/notifications',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Basic NGMzODk0ODQtMzE0Ni00N2Y5LWE3YmMtZDU1MjVkZDQ5ZTUz'
+            'Authorization': 'Basic ' + appconfig.onesignalAuthKey
         },
         json: {
-            app_id: "0a8074bb-c0e4-48cc-8def-edd22ce17b9d",
+            app_id: appconfig.onesignalAppID,
             headings: { "en": "DST Notify" },
             included_segments: ["All"],
             contents: { "en": msg },
@@ -2318,7 +2321,7 @@ function sendWarningMail(maillist, appid, msg, fullreport, type) {
             "html": "<h1>Example text</h1>",
             "text": msg + "\n" + fullreport,
             "subject": type ? "DST Warning System CCU_value down rate" : "DST Warning System Login Failed",
-            "from": { "name": "DST Game Notify System", "email": "nguyenhaian@outlook.com" },
+            "from": { "name": "DST Game Notify System", "email": appconfig.sp_mailfrom },
             "to": maillist,
             "bcc": []
         };
@@ -2356,8 +2359,8 @@ function sendWarningMail(maillist, appid, msg, fullreport, type) {
             },
             json: {
                 grant_type: 'client_credentials',
-                client_id: '081e09eb142aa9db1499fa10870dc4b2',
-                client_secret: '18ff0e52f7aa496a0153609ff2fce9ef'
+                client_id: appconfig.sp_client_id,
+                client_secret: appconfig.sp_client_secret
             }
         };
 
@@ -2379,7 +2382,7 @@ function sendWarningMail(maillist, appid, msg, fullreport, type) {
 
 // khởi động server.listen sau 3s để chắc chắn đã load data thành công từ DB
 setTimeout(function() {
-    server.listen(3000, function() {
-        console.log('listening on *:3000');
+    server.listen(appconfig.port_app, function() {
+        console.log(`listening on *:${appconfig.port_app}`);
     });
-}, 3000);
+}, 1000);

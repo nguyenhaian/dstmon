@@ -5,7 +5,7 @@
         .module('chartApp')
         .controller('BannerController', BannerController);
 
-    BannerController.$inject = ['$scope', '$http', '$timeout', 'socket', '$compile'];
+    BannerController.$inject = ['$scope', '$http', '$timeout', 'socket', '$compile', 'appconfig'];
 
     function formatImageUrl(url) {
         var url_s = url.split(";");
@@ -15,10 +15,10 @@
         return url_s;
     }
 
-    function BannerController($scope, $http, $timeout, socket, $compile) {
+    function BannerController($scope, $http, $timeout, socket, $compile, appconfig) {
         // init
         $scope.target = {
-            apps: ["dautruong", "3c", "52fun"]
+            apps: appconfig.apps
         };
         $scope.target.selectedApp = $scope.target.apps[0];
 
@@ -28,70 +28,6 @@
         $scope.result = {};
         $scope.loadstatus = {};
         $scope.bannerVer = 0;
-
-        $scope.notix = {
-            "_id": "582eb298f89ae2aa08f50ad4",
-            "app": "siam",
-            "note": "showType: Number, // 0: login, 1: lúc hết tiền ==== showLimit: Number, // số lần hiển thị tối da trong 1 ngày với 1 user ==== requirePayment: Hiển thị banner khi: 0: chưa nạp tiền, 1: nạp tiền & ko quan tâm, 2:nạp tiền & hiển thị banner, 3: Không quan tâm ===== priority: random hiển thị khi cùng giá trị ưu tiên, LQ, AG, Vip",
-            "type": 10,
-            "showType": 0,
-            "showLimit": 100,
-            "requirePayment": 3,
-            "priority": 29,
-            "os": 0,
-            "version": [
-                4.09,
-                6.09
-            ],
-            "title": "  LQ > 100, Vip 9 Gợi ý nạp SMS = 100baht; Card = 1000 baht; IAP = 99.99$",
-            "LQ": [
-                0,
-                10000000
-            ],
-            "AG": [
-                0,
-                500000
-            ],
-            "Vip": [
-                9,
-                9
-            ],
-            "url": "http://siamplayth.com/mconfig/banner/hettien/vip8910/vip8_1.png;http://siamplayth.com/mconfig/banner/hettien/vip8910/vip8_2.png;http://siamplayth.com/mconfig/banner/hettien/vip8910/vip8_3.png",
-            "urllink": "https://www.google.com.vn/",
-            "date": "2016-11-11T17:00:00.000Z",
-            "dexp": "2016-11-18T17:00:00.000Z",
-            "countBtn": 3,
-            "arrTypeBtn": [
-                "sms",
-                "iap",
-                "card"
-            ],
-            "arrUrlBtn": [
-                "http://siamplayth.com/mconfig/banner/button/btn_sms.png",
-                "http://siamplayth.com/mconfig/banner/button/btn_iap.png",
-                "http://siamplayth.com/mconfig/banner/button/btn_card.png"
-            ],
-            "arrBonus": [
-                25,
-                25,
-                25
-            ],
-            "arrValue": [
-                3,
-                4,
-                4
-            ],
-            "arrPos": [{
-                "x": -0.3,
-                "y": -0.35
-            }, {
-                "x": 0,
-                "y": -0.35
-            }, {
-                "x": 0.3,
-                "y": -0.35
-            }]
-        };
 
         var $command_ta = $('#command');
         autosize($command_ta);
@@ -131,7 +67,6 @@
                 }
                 alert(e);
             }
-
         };
 
         $scope.addBanner = function(index) {

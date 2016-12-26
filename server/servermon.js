@@ -162,11 +162,9 @@ function createOneSignalMessage(campaignid, targetapp, recipient) {
 
 /*************************************************************/
 // socketio namespaces
-var clients = io.of('/clients');
 var tracker = io.of('/tracker');
 
 // socketio vars
-var connectedDevices = {};
 var formattedData = {}; // là phiên bản đã format của connectedDevices
 var timelineFormattedData = [];
 var distsInfo = {}; // thông tin của các dist
@@ -1677,6 +1675,130 @@ app.post('/deleteBanner', function(req, res) {
     });
 });
 
+app.post('/createBannerShowLimit', function(req, res) {
+    // console.log(JSON.stringify(req.body));
+    var option = req.body;
+    var Model = models.BannerShowLimitRule;
+    var maxRuleNumber = 0;
+    var date = Date();
+
+    Model.find({}).sort("-ruleNumber").limit(1).exec(function(err, docs) {
+        if (!err && docs.length > 0) {
+            maxRuleNumber = docs[0].ruleNumber;
+        }
+
+        option.rule.ruleNumber = maxRuleNumber + 1;
+        option.rule.date = date;
+
+        var rule = new Model(option.rule);
+        rule.save(function(err, doc) {
+            if (err) {
+                console.log("Something wrong when insert BannerShowLimitRule! ");
+                console.log(err);
+            }
+
+            res.json({ err: err, data: doc, ruleNumber: option.rule.ruleNumber });
+        });
+
+    });
+
+
+});
+
+app.post('/getBannerShowLimit', function(req, res) {
+    // console.log(JSON.stringify(req.body));
+    var option = req.body;
+    var Model = models.BannerShowLimitRule;
+    // console.log('getBannerShowLimit');
+    // console.log(option.query);
+
+    Model.find(option.query).exec(function(err, docs) {
+        res.json({ err: err, data: docs });
+    });
+});
+
+app.post('/saveBannerShowLimit', function(req, res) {
+    // console.log(JSON.stringify(req.body));
+    var option = req.body;
+    var Model = models.BannerShowLimitRule;
+
+    Model.update({ _id: option._id }, {
+        $set: option.data
+    }, { new: true }, function(err, doc) {
+        if (err) {
+            res.json({ err: err });
+            console.log("saveBannerShowLimit failed!");
+            return;
+        }
+        res.setHeader('Content-Type', 'application/json');
+        res.send(JSON.stringify(doc, null, 3));
+    });
+});
+
+app.post('/deleteBannerShowLimit', function(req, res) {
+    // console.log(JSON.stringify(req.body));
+    var option = req.body;
+    var Model = models.BannerShowLimitRule;
+
+    function handleErr(err, data) {
+        res.json({ err: err, data: data });
+    }
+
+    Model.find({ _id: option._id }, function(err, docs) {
+        if (err) {
+            handleErr(err)
+        } else if (docs.length < 1) {
+            handleErr("not found")
+        } else {
+            var rule = docs[0];
+            // kiểm tra xem có banner nào đang dùng ràng buộc này ko
+            var getBannerAsycn = {
+                querystring: { bannerShowLimitRule: rule.ruleNumber },
+                query: function(model, callback) {
+                    model.find(this.querystring)
+                        .select({ _id: 1 })
+                        .limit(200)
+                        .exec(function(err, docs) {
+                            callback(err, docs);
+                        });
+                }
+            };
+
+            var bannerModels = [models.BannerV2, models.Type10Popup, models.GreetingPopup];
+            var bannerModelNames = ['BannerV2', 'Type10Popup', 'GreetingPopup'];
+            async.map(bannerModels,
+                getBannerAsycn.query.bind(getBannerAsycn),
+                function(errs, results) {
+                    if (errs) {
+                        handleErr(errs);
+                    } else {
+                        var strres = "";
+                        var total = 0;
+                        // console.log('getBannerAsycn callback');
+                        results.map(function(docs, index) {
+                            // console.log(docs);
+                            var bannerCount = docs.length;
+                            strres += "[" + bannerModelNames[index] + ": " + bannerCount + "] ";
+                            total += bannerCount;
+                        });
+
+                        if (total > 0) {
+                            handleErr(total + " banner(s) are depend on this rule", strres);
+                        } else {
+                            Model.remove({ _id: option._id }, function(err) {
+                                if (err)
+                                    handleErr(err);
+                                else
+                                    res.json({ data: 'removed' });
+                            });
+                        }
+                    }
+                });
+        }
+    });
+
+});
+
 
 app.post('/actionLoadConfig', function(req, res) {
     // console.log(JSON.stringify(req.body));
@@ -1689,26 +1811,6 @@ app.post('/actionLoadConfig', function(req, res) {
             // socket.emit('tld.response.error', error);
             res.json({ data: [], error: error });
         });
-});
-
-app.get('/timelineCount', function(req, res) {
-    res.json({ timeLineDataCount: _.size(timelineFormattedData) });
-});
-
-app.get('/clients', function(req, res) {
-    var _formattedData = formatClientData();
-    res.json(_formattedData);
-});
-
-app.get('/clients2', function(req, res) {
-    var _formattedData = _.cloneDeep(formattedData);
-    _.forOwn(_formattedData, function(fd, key) {
-        if (!_.has(fd, 'info')) {
-            fd['info'] = distsInfo[key];
-        }
-    });
-
-    res.json(_formattedData);
 });
 
 app.get('/live', function(req, res) {
@@ -1736,90 +1838,6 @@ app.get('/events', function(req, res) {
         clearInterval(timer)
     })
 })
-
-clients.on('connection', function(socket) {
-    // console.log(getTimeStamp() + " a user has been connected");
-    // socket.emit('connected');
-    // socket.emit('hello');
-    // console.log(getTimeStamp() + ' ***** ');
-    process.stdout.write('*')
-    connectedDevices[socket.id] = {};
-
-    socket.on('reginfo', function(user) {
-        user = JSON.parse(user);
-        // console.log(getTimeStamp() + ' +++++ '); // + JSON.stringify(user));
-        process.stdout.write('+')
-            // them thoi gian vao user
-        user['loginTime'] = getTimeStamp();
-        connectedDevices[socket.id] = user;
-        // connectedDevices[socket.id].loseFocus = false;
-
-        addNewDevice(user);
-
-        addDistInfo(user);
-
-        // gui den manager_users
-        if (realtimemode) tracker.emit('mobile_reginfo', user);
-    });
-
-    socket.on('changeScene', function(user) {
-        user = JSON.parse(user);
-        // console.log(getTimeStamp() + ' ~~~~~ '); // + JSON.stringify(user));
-        process.stdout.write('~')
-            // them thoi gian vao user
-        user['sceneStartedTime'] = getTimeStamp();
-        // update user object
-
-        // remove khoi mang formatted truoc khi them thong tin vao user
-        removeDevice(connectedDevices[socket.id]);
-
-        // TODO: cần phải đảm bảo chắc chắn changeScene luôn xảy ra sau reginfo, nếu ko thì có trường hợp
-        user = _.extend(connectedDevices[socket.id], user);
-        // connectedDevices[socket.id].loseFocus = false;
-
-        addNewDevice(user);
-
-        // lưu ý device ko chứa thông tin về distid nên phải đưa thông tin đã extend
-        addDistInfo(user);
-
-        // gui den manager_users
-        if (realtimemode) tracker.emit('mobile_changeScene', user);
-    });
-
-    socket.on('loseFocus', function() {
-        console.log(getTimeStamp() + " a user loseFocus");
-        connectedDevices[socket.id].loseFocus = true;
-    });
-
-    socket.on('getFocus', function() {
-        // console.log(data);
-        console.log(getTimeStamp() + " a user getFocus");
-        connectedDevices[socket.id].loseFocus = false;
-    });
-
-    socket.on('disconnect', function() {
-        // console.log(getTimeStamp() + " ----- ");
-        process.stdout.write('-')
-
-        var client = connectedDevices[socket.id];
-
-        // gui den manager_users
-        if (typeof client === 'object' && !Array.isArray(client) && _.isEmpty(client) && client != undefined && client != null) {
-            // determine object is {}, you can't check by Object.is({},{}), it always returns false
-            delete connectedDevices[socket.id];
-        } else if (!_.isEmpty(client)) {
-            removeDevice(client);
-
-            // remove khoi mang
-            delete connectedDevices[socket.id];
-
-            if (realtimemode) tracker.emit('mobile_disconnect', client);
-        } else {
-            console.log("....................ERRROR DELETE CLIENT.....................");
-        }
-    });
-
-});
 
 tracker.on('connection', function(socket) {
     console.log('a tracker connected');
@@ -1868,7 +1886,7 @@ setInterval(function() {
 
 // khởi động server.listen sau 3s để chắc chắn đã load data thành công từ DB
 // setTimeout(function() {
-server.listen(3003, function() {
-    console.log('listening on *:3003');
+server.listen(appconfig.port_man, function() {
+    console.log(`listening on *:${appconfig.port_man}`);
 });
 // }, 3000);

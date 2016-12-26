@@ -168,7 +168,7 @@ var UserScheme = new mongoose.Schema({
         date: String,
         // session: [{ ruleNumber: Number, count: Number }],
         day: [], //[{ ruleNumber: Number, count: Number }],
-        lifetime: []//{ ruleNumber: Number, count: Number }]
+        lifetime: [] //{ ruleNumber: Number, count: Number }]
     }
 });
 UserScheme.index({ uid: 1, app: 1 }, { unique: true });
@@ -323,9 +323,10 @@ exports.GPReport = mongoose.model('GPReport', {
 });
 
 exports.BannerShowLimitRule = mongoose.model('BannerShowLimitRule', {
-    date: Date, //-> ngày tạo
+    app: { type: String, index: true },
     ruleNumber: { type: Number, unique: true, required: true, dropDups: true, validate: value => (value > 0) }, //-> mã Rule
     rule: String,
     description: String, // -> mô tả
-    limit: Number
+    limit: Number,
+    date: Date //-> ngày tạo
 });
